@@ -1,33 +1,36 @@
-# DashAgentTool
+# DashAgentTool (DashAgent)
 
-## AI Sr. BI Analyst for Tableau
+## Because even good dashboards have blind spots.
 
-> **"DashAgentTool doesn't just help you build dashboards. It challenges them, finds what you're missing, and tells you the real story."**
+> **DashAgent is a second opinion for Tableau dashboards: it helps validate what a dashboard is saying, spot missing context, and surface insights people might otherwise miss.**
 
 [![Tableau Hackathon 2025](https://img.shields.io/badge/Tableau%20Hackathon-2025-blue)](https://tableau2025.devpost.com/)
 [![MCP Protocol](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-green)](https://modelcontextprotocol.io/)
 [![Private Repository](https://img.shields.io/badge/Repo-Private-red)]()
 
----
-
-## The Problem
-
-Traditional dashboards are in a losing race:
-
-| Old World | New World |
-|-----------|-----------|
-| Human stares at charts hoping to spot trends | AI finds patterns in seconds |
-| Dashboard shows what was pre-built | AI answers any question on-demand |
-| Errors hide in plain sight | AI detects anomalies automatically |
-| "Let me check the dashboard..." | "Hey AI, why did revenue drop?" |
-
-**Dashboards tell you what someone thought you should see. DashAgentTool tells you what you actually need to know.**
+Project story and design intent: see [STORY.md](STORY.md).
 
 ---
 
-## What DashAgentTool Does
+## Why This Exists
 
-### Analyzes - Deeper than any human could
+In practice, I kept seeing two recurring problems:
+
+1. **Dashboards are often built for strong analysts.** For everyone else, they can be hard to read, hard to trust, and hard to use to spot issues quickly.
+2. **Validation takes time.** Analysts spend hours building visuals, but small mistakes (filters, calculations, grain mismatches) can slip in—and sometimes nobody catches them.
+
+That mismatch creates a painful loop:
+- Analysts build carefully, then spend extra time validating
+- Stakeholders still struggle to interpret or notice risks
+- Issues hide in plain sight: concentration risk, negative margins, misleading axes, missing context
+
+DashAgent is designed to make dashboards easier to **trust**, easier to **understand**, and faster to **validate**.
+
+---
+
+## What DashAgent Does
+
+### Analyzes - beyond what's displayed
 - Explores ALL data dimensions, not just what's displayed
 - Finds correlations humans would miss
 - Detects anomalies and outliers automatically
@@ -38,16 +41,18 @@ Traditional dashboards are in a losing race:
 - "This trend line excludes December - your best month"
 - "15% of sales have negative margins - not shown anywhere"
 
-### Improves - Suggests better storytelling
+### Improves - suggests better storytelling
 - Redesign recommendations based on data reality
 - Missing insights that should be displayed
 - Better visualization choices for your data
 - Brand consistency and accessibility fixes
 
-### Controls - Real-time dashboard manipulation
+### Controls - real-time dashboard manipulation
 - Apply filters via natural language
 - Set parameters through conversation
 - Navigate worksheets with voice/text commands
+
+**One tool. Two interfaces.** Use it inside Tableau (Extension) for real-time interaction, or from VS Code (MCP client) for deeper analysis.
 
 ---
 
@@ -167,7 +172,7 @@ AI:  "I see 4 worksheets: Sales by Region, Monthly Trend,
       and 5 filters available."
 
 You: "Filter to California only"
-AI:  ✅ Applied filter: Region = California
+AI:  Applied filter: Region = California
 
 You: "Summarize what I'm looking at"
 AI:  [Renders insight cards directly in the dashboard]
@@ -384,7 +389,7 @@ but analysis reveals 3 hidden risks that require attention...
 |----------|--------------|----------|
 | `OPENAI_API_KEY` | [OpenAI Platform](https://platform.openai.com/api-keys) | Vision analysis, LLM orchestration |
 | `ANTHROPIC_API_KEY` | [Anthropic Console](https://console.anthropic.com/) | Alternative LLM provider |
-| `TABLEAU_PAT_VALUE` | Tableau Cloud → Settings → Personal Access Tokens | Tableau REST API access |
+| `PAT_VALUE` | Tableau Cloud → Settings → Personal Access Tokens | Tableau REST API access |
 
 **WebSocket Security Token (Optional but Recommended):**
 
@@ -433,13 +438,13 @@ Add to `.vscode/mcp.json`:
     "dashagent": {
       "type": "stdio",
       "command": "npx",
-      "args": ["tsx", "packages/mcp-server/src/index.ts"],
+      "args": ["dotenv", "-e", ".env", "--", "npx", "tsx", "packages/mcp-server/src/index.ts"],
       "cwd": "${workspaceFolder}"
     },
     "tableau": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "dotenv-cli", "-e", ".env", "--", "npx", "-y", "@tableau/mcp-server@latest"],
+      "args": ["dotenv", "-e", ".env", "--", "npx", "-y", "@tableau/mcp-server@latest"],
       "cwd": "${workspaceFolder}"
     }
   }
@@ -464,7 +469,7 @@ WS_AUTH_TOKEN=your-secure-token
 OPENAI_API_KEY=sk-...
 ```
 
-**Note:** The `.env` file is automatically loaded by `dotenv-cli` for the Tableau MCP server. The DashAgent MCP server reads environment variables from your system.
+**Note:** The configs above load `.env` via `dotenv` for both servers.
 
 ---
 
@@ -574,7 +579,7 @@ DashAgentTool/
 │   │               ├── formatting.ts
 │   │               └── statistics.ts
 │   │
-│   └── mcp-server/             # MCP Server
+│   └── mcp-server/                 # MCP Server
 │       └── src/
 │           ├── index.ts            # Server entry, MCP protocol
 │           ├── websocket-bridge.ts # Extension WebSocket connections
@@ -584,11 +589,9 @@ DashAgentTool/
 │           ├── tool-router.ts      # Tool routing logic
 │           ├── tools/
 │           │   └── index.ts        # All 26 MCP tools
-│           ├── analysis/           # Data analysis engine
-│           │   ├── query-recipes.ts    # Tableau query templates
-│           │   └── statistics.ts       # Statistical functions
-│           └── twb/                # Tableau workbook utilities
-│               └── index.ts
+│           └── analysis/           # Data analysis engine
+│               ├── query-recipes.ts    # Tableau query templates
+│               └── statistics.ts       # Statistical functions
 ```
 
 ---
@@ -837,7 +840,7 @@ DashAgentTool represents a shift from:
 Built for **Tableau Hackathon 2025** - Developer Platform track.
 
 **Key Differentiators:**
-- **AI Sr. BI Analyst**: Not just a tool, but a thinking partner
+- **AI BI Analyst**: Not just a tool, but a thinking partner
 - **Dual Interface**: Work in Tableau OR VS Code
 - **Deep Analysis**: Finds what dashboards hide
 - **Open Protocol**: MCP works with any AI client
@@ -860,6 +863,6 @@ Created by the DashAgentTool team for Tableau Hackathon 2025.
 
 <p align="center">
   <strong>DashAgentTool</strong><br>
-  <em>Your AI Sr. BI Analyst</em><br><br>
+  <em>Your AI BI Analyst</em><br><br>
   Built for Tableau Hackathon 2025
 </p>

@@ -3,7 +3,7 @@
     "dashagent": {
       "type": "stdio",
       "command": "npx",
-      "args": ["dotenv", "-e", ".env", "--", "npx", "tsx", "DashAgentTool/packages/mcp-server/src/index.ts"],
+      "args": ["dotenv", "-e", ".env", "--", "npx", "tsx", "packages/mcp-server/src/index.ts"],
       "cwd": "${workspaceFolder}",
       "env": {
         "SERVER": "https://10ax.online.tableau.com",
