@@ -5,7 +5,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Environment files (secrets)
+# Environment files (contain secrets)
 .env
 .env.local
 .env.*.local
@@ -13,10 +13,13 @@ dist/
 # IDE
 .idea/
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
 npm-debug.log*
+
+# Test coverage
+coverage/

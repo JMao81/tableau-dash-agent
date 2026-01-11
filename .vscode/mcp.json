@@ -1,0 +1,26 @@
+{
+  "servers": {    
+    "dashagent": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["dotenv", "-e", ".env", "--", "npx", "tsx", "DashAgentTool/packages/mcp-server/src/index.ts"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "SERVER": "https://10ax.online.tableau.com",
+        "SITE_NAME": "jmaotabsandbox",
+        "PAT_NAME": "dashagent-mcp"
+      }
+    },
+    "tableau": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["dotenv", "-e", ".env", "--", "npx", "-y", "@tableau/mcp-server@latest"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "SERVER": "https://10ax.online.tableau.com",
+        "SITE_NAME": "jmaotabsandbox",
+        "PAT_NAME": "dashagent-mcp"
+      }
+    }
+  }
+}

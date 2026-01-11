@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DashAgent</title>
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --accent: #3b82f6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+    }
+
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .empty-state-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-state-icon svg {
+      width: 32px;
+      height: 32px;
+      color: white;
+    }
+
+    .empty-state h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 320px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state .hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      opacity: 0.8;
+    }
+
+    .loading {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .rendered-content {
+      width: 100%;
+    }
+
+    .refresh-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(59, 130, 246, 0.9);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 100;
+    }
+
+    .refresh-btn:hover {
+      background: rgba(59, 130, 246, 1);
+      transform: scale(1.1);
+    }
+
+    .refresh-btn:disabled {
+      background: rgba(100, 116, 139, 0.7);
+      cursor: not-allowed;
+    }
+
+    .refresh-btn .spin {
+      animation: spin 0.8s linear infinite;
+    }
+
+    .viz-container {
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main id="content" class="content">
+      <div class="loading">
+        <div class="spinner"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="./js/tableau.extensions.1.latest.js"></script>
+  <script>
+    (function() {
+      'use strict';
+      
+      const contentEl = document.getElementById('content');
+
+      function showLoading() {
+        contentEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      }
+
+      function showEmptyState() {
+        contentEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </div>
+            <h2>DashAgent</h2>
+            <p>Use AI to analyze your dashboard and generate visualizations.</p>
+            <p class="hint">Click the dropdown menu (top right) and select "Configure" to get started.</p>
+          </div>
+        `;
+      }
+
+      function loadSavedContent() {
+        try {
+          const savedHtml = tableau.extensions.settings.get('dashagent_html');
+          if (savedHtml && savedHtml.trim()) {
+            // Wrap with refresh button
+            contentEl.innerHTML = `
+              <div class="viz-container">
+                <button class="refresh-btn" id="btn-refresh" title="Refresh with latest data">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  </svg>
+                </button>
+                <div class="rendered-content">${savedHtml}</div>
+              </div>
+            `;
+            
+            // Attach refresh handler
+            const refreshBtn = document.getElementById('btn-refresh');
+            if (refreshBtn) {
+              refreshBtn.addEventListener('click', refreshVisualization);
+            }
+          } else {
+            showEmptyState();
+          }
+        } catch (e) {
+          console.error('Error loading saved content:', e);
+          showEmptyState();
+        }
+      }
+
+      // Refresh visualization with current data
+      async function refreshVisualization() {
+        const refreshBtn = document.getElementById('btn-refresh');
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.innerHTML = `
+            <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          `;
+        }
+
+        try {
+          // Load viz configs from localStorage
+          const savedConfigs = localStorage.getItem('dashagent_viz_configs');
+          if (!savedConfigs) {
+            throw new Error('No visualization configs found');
+          }
+
+          const configs = JSON.parse(savedConfigs);
+          const dashboard = tableau.extensions.dashboardContent.dashboard;
+          const htmlParts = [];
+
+          for (const config of configs) {
+            const ws = dashboard.worksheets.find(w => w.name === (config.worksheetName || config.worksheet));
+            if (!ws) continue;
+
+            // Render the visualization
+            const vizHtml = await renderVizFromConfig({ ...config, worksheetObj: ws });
+            htmlParts.push(vizHtml);
+          }
+
+          if (htmlParts.length > 0) {
+            const newHtml = `<div class="dashboard-container" style="display: flex; flex-direction: column; gap: 16px;">${htmlParts.join('')}</div>`;
+            
+            // Save to settings
+            tableau.extensions.settings.set('dashagent_html', newHtml);
+            await tableau.extensions.settings.saveAsync();
+            
+            // Update display
+            loadSavedContent();
+          }
+        } catch (e) {
+          console.error('Refresh error:', e);
+          if (refreshBtn) {
+            refreshBtn.innerHTML = `⚠️`;
+            setTimeout(() => {
+              refreshBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6M1 20v-6h6"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+              `;
+              refreshBtn.disabled = false;
+            }, 2000);
+          }
+        }
+      }
+
+      // Simplified viz renderer for index.html (mirrors config.html logic)
+      async function renderVizFromConfig(config) {
+        const { vizType = 'bar', worksheetObj, title, colorScheme = 'tableau', showValues = true, maxItems = 10, sortBy = 'value', sortOrder = 'desc' } = config;
+        
+        const summaryData = await worksheetObj.getSummaryDataAsync({ maxRows: 500 });
+        const columns = summaryData.columns;
+        const rows = summaryData.data;
+
+        // Find dimension and measure columns
+        let dimColIndex = columns.findIndex(c => c.dataType === 'string');
+        let measureColIndex = columns.findIndex(c => ['int', 'float', 'number'].includes(c.dataType));
+
+        if (config.dimensionField) {
+          const idx = columns.findIndex(c => c.fieldName.toLowerCase().includes(config.dimensionField.toLowerCase()));
+          if (idx >= 0) dimColIndex = idx;
+        }
+        if (config.measureField) {
+          const idx = columns.findIndex(c => c.fieldName.toLowerCase().includes(config.measureField.toLowerCase()));
+          if (idx >= 0) measureColIndex = idx;
+        }
+
+        // Aggregate data
+        const aggregated = {};
+        for (const row of rows) {
+          const dimValue = dimColIndex >= 0 ? row[dimColIndex].formattedValue : 'Value';
+          const measureValue = measureColIndex >= 0 ? parseFloat(row[measureColIndex].value) || 0 : 1;
+          aggregated[dimValue] = (aggregated[dimValue] || 0) + measureValue;
+        }
+
+        // Convert and sort
+        let dataPoints = Object.entries(aggregated).map(([label, value]) => ({ label, value }));
+        
+        if (sortBy === 'label') {
+          dataPoints.sort((a, b) => {
+            const aNum = parseFloat(a.label), bNum = parseFloat(b.label);
+            if (!isNaN(aNum) && !isNaN(bNum)) return sortOrder === 'desc' ? bNum - aNum : aNum - bNum;
+            return sortOrder === 'desc' ? b.label.localeCompare(a.label) : a.label.localeCompare(b.label);
+          });
+        } else {
+          dataPoints.sort((a, b) => sortOrder === 'desc' ? b.value - a.value : a.value - b.value);
+        }
+        
+        dataPoints = dataPoints.slice(0, maxItems);
+
+        const dimName = dimColIndex >= 0 ? columns[dimColIndex].fieldName : 'Category';
+        const measureName = measureColIndex >= 0 ? columns[measureColIndex].fieldName : 'Value';
+        const vizTitle = title || `${measureName} by ${dimName}`;
+
+        const colors = {
+          tableau: ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1'],
+          blue: ['#1e40af', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'],
+          green: ['#065f46', '#059669', '#10b981', '#34d399', '#6ee7b7']
+        }[colorScheme] || ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f'];
+
+        const formatNum = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : n.toLocaleString();
+        const maxValue = Math.max(...dataPoints.map(d => d.value));
+        const total = dataPoints.reduce((s, d) => s + d.value, 0);
+        const timestamp = new Date().toLocaleTimeString();
+
+        // Simple bar chart renderer
+        if (vizType === 'bar' || vizType === 'horizontal-bar') {
+          if (vizType === 'horizontal-bar') {
+            return `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="margin: 0 0 4px 0; color: #1f2937; font-size: 16px;">${vizTitle}</h3>
+                <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 12px;">${measureName} · Updated ${timestamp}</p>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${dataPoints.map((d, i) => `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="width: 80px; font-size: 11px; color: #374151; text-align: right;">${d.label}</span>
+                      <div style="flex: 1; height: 24px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${(d.value / maxValue) * 100}%; height: 100%; background: ${colors[i % colors.length]}; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;">
+                          ${showValues ? `<span style="font-size: 10px; color: white; font-weight: 500;">${formatNum(d.value)}</span>` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+                <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #f3f4f6; text-align: right;">
+                  <span style="font-size: 10px; color: #9ca3af;">Total: ${formatNum(total)}</span>
+                </div>
+              </div>
+            `;
+          }
+          const barWidth = Math.floor(280 / dataPoints.length) - 8;
+          return `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+              <h3 style="margin: 0 0 4px 0; color: #1f2937; font-size: 16px;">${vizTitle}</h3>
+              <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 12px;">${measureName} · Updated ${timestamp}</p>
+              <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 180px; padding: 0 10px; border-bottom: 2px solid #e5e7eb;">
+                ${dataPoints.map((d, i) => `
+                  <div style="display: flex; flex-direction: column; align-items: center; width: ${barWidth}px;">
+                    ${showValues ? `<span style="font-size: 10px; color: #374151; margin-bottom: 4px;">${formatNum(d.value)}</span>` : ''}
+                    <div style="width: 100%; height: ${(d.value / maxValue) * 140}px; background: ${colors[i % colors.length]}; border-radius: 4px 4px 0 0;"></div>
+                  </div>
+                `).join('')}
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 10px 0;">
+                ${dataPoints.map(d => `<div style="width: ${barWidth}px; text-align: center;"><span style="font-size: 9px; color: #6b7280;">${d.label.length > 6 ? d.label.substring(0,5)+'…' : d.label}</span></div>`).join('')}
+              </div>
+              <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #f3f4f6; text-align: right;">
+                <span style="font-size: 10px; color: #9ca3af;">Total: ${formatNum(total)}</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // Metric cards
+        if (vizType === 'metric-cards' || vizType === 'kpi') {
+          return `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 14px;">${vizTitle} · Updated ${timestamp}</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">
+                ${dataPoints.slice(0, 6).map((d, i) => `
+                  <div style="padding: 12px; background: linear-gradient(135deg, ${colors[i % colors.length]}22 0%, ${colors[i % colors.length]}11 100%); border-radius: 8px; border-left: 3px solid ${colors[i % colors.length]};">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">${d.label}</div>
+                    <div style="font-size: 18px; font-weight: 600; color: ${colors[i % colors.length]};">${formatNum(d.value)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        // Default: simple table
+        return `
+          <div style="font-family: -apple-system, sans-serif; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 14px;">${vizTitle} · Updated ${timestamp}</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <tr style="background: #f8fafc;"><th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">${dimName}</th><th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">${measureName}</th></tr>
+              ${dataPoints.map(d => `<tr><td style="padding: 8px; border-bottom: 1px solid #f3f4f6;">${d.label}</td><td style="padding: 8px; text-align: right; border-bottom: 1px solid #f3f4f6;">${formatNum(d.value)}</td></tr>`).join('')}
+            </table>
+          </div>
+        `;
+      }
+
+      function showConfig() {
+        // Build config URL relative to current location
+        const popupUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'config.html';
+        console.log('Opening config dialog:', popupUrl);
+        
+        tableau.extensions.ui.displayDialogAsync(popupUrl, '', { height: 700, width: 1000 })
+          .then(function(closePayload) {
+            console.log('Config dialog closed with payload:', closePayload);
+            loadSavedContent();
+          })
+          .catch(function(error) {
+            // User closed the dialog - not an error
+            if (error.errorCode !== tableau.ErrorCodes.DialogClosedByUser) {
+              console.error('Dialog error:', error);
+            }
+            loadSavedContent();
+          });
+      }
+
+      // Initialize
+      showLoading();
+
+      tableau.extensions.initializeAsync({ 'configure': showConfig })
+        .then(function() {
+          console.log('DashAgent extension initialized');
+          
+          // Listen for settings changes
+          tableau.extensions.settings.addEventListener(
+            tableau.TableauEventType.SettingsChanged,
+            function() { loadSavedContent(); }
+          );
+          
+          loadSavedContent();
+        })
+        .catch(function(error) {
+          console.error('Extension init failed:', error);
+          showEmptyState();
+        });
+    })();
+  </script>
+</body>
+</html>

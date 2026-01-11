@@ -1,0 +1,28 @@
+{
+  "name": "dashagent-tool",
+  "version": "1.0.0",
+  "description": "AI-powered dashboard augmentation layer for Tableau",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:extension": "npm run dev --workspace=extension",
+    "dev:mcp": "npm run dev --workspace=mcp-server",
+    "build": "npm run build --workspaces",
+    "dev": "concurrently \"npm run dev:extension\" \"npm run dev:mcp\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "tableau",
+    "extension",
+    "mcp",
+    "ai",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT"
+}

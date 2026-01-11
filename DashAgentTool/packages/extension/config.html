@@ -1,0 +1,1013 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DashAgent Configuration</title>
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --bg-tertiary: #f1f5f9;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --border-light: #f1f5f9;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-light: #eff6ff;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+      --transition: 150ms ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-primary);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo svg { width: 18px; height: 18px; color: white; }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .status-dot.connected { background: var(--success); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+    /* Pulse highlight animation for drawing attention */
+    .pulse-highlight {
+      animation: pulse-glow 0.6s ease-in-out infinite;
+      background: var(--accent) !important;
+      color: white !important;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 5px var(--accent); }
+      50% { transform: scale(1.05); box-shadow: 0 0 15px var(--accent), 0 0 30px var(--accent); }
+    }
+
+    .btn-icon {
+      padding: 8px;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+    }
+
+    .btn-icon:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+    /* Main Layout */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 240px;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-secondary);
+    }
+
+    .nav {
+      padding: 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: all var(--transition);
+    }
+
+    .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .nav-item.active { background: var(--accent-light); color: var(--accent); }
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    /* Tools Documentation Table */
+    .tools-panel { padding: 20px; overflow-y: auto; }
+    .tools-panel h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+    .tools-panel .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+    .tools-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .tools-table th, .tools-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-color); }
+    .tools-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-primary); position: sticky; top: 0; }
+    .tools-table tr:hover { background: var(--bg-tertiary); }
+    .tools-table .tool-name { font-weight: 600; color: var(--accent); font-family: monospace; white-space: nowrap; }
+    .tools-table .category-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 500; }
+    .tools-table .cat-data { background: #dbeafe; color: #1e40af; }
+    .tools-table .cat-viz { background: #dcfce7; color: #166534; }
+    .tools-table .cat-analysis { background: #fef3c7; color: #92400e; }
+    .tools-table .cat-design { background: #f3e8ff; color: #7c3aed; }
+    .tools-table .cat-docs { background: #e0e7ff; color: #3730a3; }
+    .tools-table .dep-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin: 1px; }
+    .tools-table .dep-ext { background: #fee2e2; color: #991b1b; }
+    .tools-table .dep-mcp { background: #cffafe; color: #0e7490; }
+    .tools-table .dep-api { background: #fef9c3; color: #854d0e; }
+    .tools-table .dep-ai { background: #ede9fe; color: #6d28d9; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .panel.active { display: flex; }
+
+    /* Chat Panel */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      max-width: 85%;
+    }
+
+    .message.user { margin-left: auto; flex-direction: row-reverse; }
+
+    .message-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .message.user .message-avatar { background: var(--accent); color: white; }
+    .message.assistant .message-avatar { background: var(--bg-tertiary); }
+    .message.system .message-avatar { background: #f59e0b; color: white; font-size: 12px; }
+    .message.system .message-content { 
+      background: rgba(245, 158, 11, 0.1); 
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      font-size: 13px;
+    }
+
+    .message-content {
+      padding: 12px 16px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .message.user .message-content {
+      background: var(--accent);
+      color: white;
+    }
+
+    .message-content p { margin-bottom: 8px; }
+    .message-content p:last-child { margin-bottom: 0; }
+    .message-content ul { margin: 8px 0; padding-left: 20px; }
+    .message-content li { margin-bottom: 4px; }
+
+    /* Thinking Indicator */
+    .thinking-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+    }
+    
+    .thinking-text {
+      font-style: italic;
+      font-size: 14px;
+    }
+    
+    .thinking-dots {
+      display: flex;
+      gap: 4px;
+    }
+    
+    .thinking-dots span {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: thinking-bounce 1.4s ease-in-out infinite;
+    }
+    
+    .thinking-dots span:nth-child(1) { animation-delay: 0s; }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes thinking-bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+      background: var(--bg-primary);
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      resize: none;
+      outline: none;
+      font-family: inherit;
+      transition: border-color var(--transition);
+    }
+
+    .chat-input:focus { border-color: var(--accent); }
+
+    /* Design Panel */
+    .design-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .drop-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--bg-secondary);
+      transition: all var(--transition);
+      position: relative;
+      min-height: 200px;
+    }
+
+    .drop-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .drop-zone.has-image {
+      border-style: solid;
+    }
+
+    .drop-content {
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .drop-content svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 12px;
+      color: var(--text-muted);
+    }
+
+    .drop-content h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .drop-content p {
+      font-size: 13px;
+    }
+
+    .preview-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: var(--radius-md);
+    }
+
+    .design-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    /* Data Panel */
+    .data-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .data-section {
+      margin-bottom: 24px;
+    }
+
+    .data-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .data-card {
+      padding: 16px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+
+    .data-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .data-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .data-item:last-child { border-bottom: none; }
+    .data-item-label { color: var(--text-secondary); }
+    .data-item-value { font-weight: 500; }
+
+    /* Settings Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--bg-primary);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      outline: none;
+      font-family: inherit;
+      transition: border-color var(--transition);
+    }
+
+    .form-input:focus, .form-select:focus { border-color: var(--accent); }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Preview Panel */
+    .preview-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .preview-container {
+      min-height: 300px;
+      padding: 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+        </div>
+        <span class="header-title">DashAgent Configuration</span>
+      </div>
+      <div class="header-right">
+        <div class="status" title="Tableau Dashboard Connection">
+          <span id="status-dot" class="status-dot"></span>
+          <span id="status-text">Loading...</span>
+        </div>
+        <button id="btn-settings" class="btn-icon" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="sidebar">
+        <nav class="nav">
+          <button class="nav-item active" data-panel="chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Chat
+          </button>
+          <button class="nav-item" data-panel="design">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Design
+          </button>
+          <button class="nav-item" data-panel="preview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            Preview
+          </button>
+          <button class="nav-item" data-panel="tools">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+            Tools
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <button id="btn-save" class="btn btn-primary" style="width:100%">
+            Save & Close
+          </button>
+        </div>
+      </aside>
+
+      <section class="content">
+        <!-- Chat Panel -->
+        <div id="panel-chat" class="panel active">
+          <div id="chat-messages" class="chat-messages">
+            <div class="message assistant">
+              <div class="message-avatar">Dash</div>
+              <div class="message-content">
+                <p><strong>Welcome to DashAgent</strong> — Your AI Design Partner for Tableau dashboards.</p>
+                
+                <details style="margin-top:8px;">
+                  <summary style="cursor:pointer; color:var(--accent); font-weight:500; font-size:13px; padding:6px 0;">
+                    💡 Show available commands...
+                  </summary>
+                  
+                  <div style="margin-top:8px; padding-left:4px;">
+                    <p style="margin-top:8px;font-weight:600;color:var(--accent);font-size:13px;">Design Tools</p>
+                    <ul style="margin-top:4px;font-size:13px;">
+                      <li><strong>"Review my dashboard design"</strong> — Iron Viz-style scorecard</li>
+                      <li><strong>"Check my colors"</strong> — Palette harmony & accessibility</li>
+                      <li><strong>"Create a palette for [topic]"</strong> — Custom color palette</li>
+                    </ul>
+                    
+                    <p style="margin-top:10px;font-weight:600;color:var(--accent);font-size:13px;">AI Image Generation</p>
+                    <ul style="margin-top:4px;font-size:13px;">
+                      <li><strong>"Create icons for my dashboard"</strong> — Custom AI-generated icons</li>
+                      <li><strong>"Design a background"</strong> — Subtle dashboard backgrounds</li>
+                    </ul>
+                    
+                    <p style="margin-top:10px;font-weight:600;color:var(--accent);font-size:13px;">Storytelling & Analysis</p>
+                    <ul style="margin-top:4px;font-size:13px;">
+                      <li><strong>"Build me a dashboard"</strong> — KPI cards, charts & views</li>
+                      <li><strong>"Analyze this dashboard"</strong> — Quick profiling & insights</li>
+                      <li><strong>"Which [X] has the highest [Y]?"</strong> — Segment analysis</li>
+                    </ul>
+                  </div>
+                </details>
+                
+                <p style="margin-top:10px;padding:8px 10px;background:rgba(11,92,173,0.1);border-radius:8px;font-size:12px;">
+                  <strong>Tip:</strong> Drop a screenshot into chat for design analysis, or use the <strong>Design tab</strong> to capture your view.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <button class="btn-icon" id="btn-attach" title="Attach image">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+              </svg>
+            </button>
+            <textarea id="chat-input" class="chat-input" placeholder="Ask me about your dashboard..." rows="1"></textarea>
+            <button id="btn-send" class="btn btn-primary" disabled>Send</button>
+            <button id="btn-clear-chat" class="btn-icon" title="Clear conversation history" style="opacity: 0.6;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Design Panel -->
+        <div id="panel-design" class="panel">
+          <div class="design-content">
+            <div id="drop-zone" class="drop-zone">
+              <div id="drop-content" class="drop-content">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <h3>Drop screenshot here</h3>
+                <p>or click to browse</p>
+              </div>
+              <img id="preview-img" class="preview-image" style="display:none" />
+            </div>
+            <div class="design-actions">
+              <button id="btn-capture" class="btn btn-ghost" title="Capture your screen">Capture Screen</button>
+              <button id="btn-clear" class="btn btn-ghost" style="display:none">Clear</button>
+              <button id="btn-analyze" class="btn btn-primary" disabled>Analyze Design</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div id="panel-preview" class="panel">
+          <div class="preview-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div class="data-section-title">Generated Output</div>
+              <div style="display: flex; gap: 8px;">
+                <button id="btn-clear-viz" class="btn btn-ghost" style="padding: 4px 12px; font-size: 12px; display: none;">
+                  Clear
+                </button>
+                <button id="btn-refresh-viz" class="btn btn-primary" style="padding: 4px 12px; font-size: 12px; display: none;">
+                  Refresh Data
+                </button>
+              </div>
+            </div>
+            <div id="preview-container" class="preview-container">
+              <p style="color:var(--text-muted);font-size:13px">No content generated yet. Use Chat to generate visualizations.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tools Documentation Panel -->
+        <div id="panel-tools" class="panel">
+          <div class="tools-panel">
+            <h2>DashAgent MCP Tools</h2>
+            <p class="subtitle">18 custom tools available for AI-powered dashboard analysis and design. Each tool integrates with Tableau Extensions API and/or Tableau MCP Server.</p>
+            
+            <table class="tools-table">
+              <thead>
+                <tr>
+                  <th>Tool Name</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Dependencies</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Data Profiling -->
+                <tr>
+                  <td class="tool-name">profile_data_for_visualization</td>
+                  <td><span class="category-badge cat-data">Data</span></td>
+                  <td><em>Primary.</em> Profiles worksheet data for quality, structure, and viz recommendations. <strong>Call first before any visualization.</strong></td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getDataSourcesAsync</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">get_worksheet_data</td>
+                  <td><span class="category-badge cat-data">Data</span></td>
+                  <td>Retrieves raw data from Tableau worksheets with optional limits and data quality analysis.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getSummaryDataAsync</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">apply_filter</td>
+                  <td><span class="category-badge cat-data">Data</span></td>
+                  <td>Applies categorical or range filters to worksheet data.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">applyFilterAsync</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">set_parameter</td>
+                  <td><span class="category-badge cat-data">Data</span></td>
+                  <td>Sets Tableau parameter values to update dashboard calculations.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">changeValueAsync</span></td>
+                </tr>
+
+                <!-- Visualization -->
+                <tr>
+                  <td class="tool-name">render_visualization</td>
+                  <td><span class="category-badge cat-viz">Viz</span></td>
+                  <td>Renders single charts (bar, line, pie, donut, area, table, KPI). Supports themes, average lines, and aggregation.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getSummaryDataAsync</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">build_dashboard</td>
+                  <td><span class="category-badge cat-viz">Viz</span></td>
+                  <td>Creates complete multi-panel dashboards with KPIs, charts, and professional styling. One-shot dashboard builder.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getSummaryDataAsync</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">clear_visualization</td>
+                  <td><span class="category-badge cat-viz">Viz</span></td>
+                  <td>Clears the preview panel content.</td>
+                  <td><span class="dep-badge dep-ext">DOM Only</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">toggle_tooltips</td>
+                  <td><span class="category-badge cat-viz">Viz</span></td>
+                  <td>Toggles tooltip visibility on rendered charts.</td>
+                  <td><span class="dep-badge dep-ext">DOM Only</span></td>
+                </tr>
+
+                <!-- Analysis -->
+                <tr>
+                  <td class="tool-name">analyze_dashboard_smart</td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
+                  <td>Primary data analysis tool. Supports quick-profile, segment-deep-dive, concentration, trend, and anomaly analysis.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-mcp">Tableau MCP</span><span class="dep-badge dep-api">query-datasource</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">analyze_design</td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
+                  <td>Vision AI analysis of dashboard design. Evaluates UX/UI, storytelling, and accessibility from screenshots.</td>
+                  <td><span class="dep-badge dep-ai">GPT-4 Vision</span><span class="dep-badge dep-ext">Screenshot</span></td>
+                </tr>
+
+                <!-- Design Tools -->
+                <tr>
+                  <td class="tool-name">analyze_iron_viz_style</td>
+                  <td><span class="category-badge cat-design">Design</span></td>
+                  <td>Evaluates dashboard against Iron Viz competition principles. Returns scorecard with improvement suggestions.</td>
+                  <td><span class="dep-badge dep-ai">GPT-4 Vision</span><span class="dep-badge dep-ext">Screenshot</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">analyze_color_harmony</td>
+                  <td><span class="category-badge cat-design">Design</span></td>
+                  <td>Analyzes color palette for harmony, WCAG accessibility, and colorblind safety.</td>
+                  <td><span class="dep-badge dep-ai">GPT-4 Vision</span><span class="dep-badge dep-ext">Color Analysis</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">generate_tableau_palette</td>
+                  <td><span class="category-badge cat-design">Design</span></td>
+                  <td>Generates custom Tableau color palette (.tps Preferences file) with font recommendations.</td>
+                  <td><span class="dep-badge dep-ai">LLM</span><span class="dep-badge dep-ext">TPS Generator</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">suggest_annotations</td>
+                  <td><span class="category-badge cat-design">Design</span></td>
+                  <td>Suggests where to add annotations in the dashboard with text recommendations.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-ai">LLM</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">transform_to_story</td>
+                  <td><span class="category-badge cat-design">Design</span></td>
+                  <td>Transforms data into storytelling format with hero headlines, key takeaways, and action recommendations.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-ai">LLM</span></td>
+                </tr>
+                <!-- Documentation -->
+                <tr>
+                  <td class="tool-name">generate_documentation</td>
+                  <td><span class="category-badge cat-docs">Docs</span></td>
+                  <td>Auto-generates documentation for the connected Tableau dashboard.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getDataSourcesAsync</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">parse_workbook_xml</td>
+                  <td><span class="category-badge cat-docs">Docs</span></td>
+                  <td>Extracts metadata, calculated fields, and parameters from Tableau workbook XML.</td>
+                  <td><span class="dep-badge dep-mcp">Tableau MCP</span><span class="dep-badge dep-api">download-workbook</span></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="margin-top: 24px; padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md);">
+              <h3 style="font-size: 14px; margin-bottom: 12px;">Dependency Legend</h3>
+              <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px;">
+                <div><span class="dep-badge dep-ext">Extensions API</span> Tableau Extensions JavaScript API</div>
+                <div><span class="dep-badge dep-api">API Method</span> Specific Tableau API method called</div>
+                <div><span class="dep-badge dep-mcp">Tableau MCP</span> Tableau MCP Server (REST API)</div>
+                <div><span class="dep-badge dep-ai">AI Model</span> AI/LLM integration (GPT-4, DALL-E, etc.)</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, #eff6ff 0%, #f3e8ff 100%); border-radius: var(--radius-md);">
+              <h3 style="font-size: 14px; margin-bottom: 8px;">Recommended Workflow</h3>
+              <ol style="font-size: 12px; color: var(--text-secondary); padding-left: 20px;">
+                <li><strong>profile_data_for_visualization</strong> — Understand your data first</li>
+                <li><strong>analyze_dashboard_smart</strong> — Get insights and recommendations</li>
+                <li><strong>build_dashboard</strong> or <strong>render_visualization</strong> — Create visualizations</li>
+                <li><strong>analyze_iron_viz_style</strong> — Get design feedback</li>
+                <li><strong>generate_tableau_palette</strong> — Enhance colors if needed</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">Settings</span>
+          <button id="btn-close-settings" class="btn-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <!-- API Keys Section -->
+          <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+            <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #1e40af;">🔑 API Keys</h4>
+            <div class="form-group">
+              <label class="form-label">OpenAI API Key</label>
+              <input type="password" id="openai-api-key" class="form-input" placeholder="sk-..." />
+              <p class="form-hint">Required for GPT-4o vision and chat</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Anthropic API Key</label>
+              <input type="password" id="anthropic-api-key" class="form-input" placeholder="sk-ant-..." />
+              <p class="form-hint">Required for Claude models</p>
+            </div>
+          </div>
+          
+          <!-- Model Selection by Task -->
+          <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+            <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #065f46;">🤖 Model Selection by Task</h4>
+            
+            <div class="form-group">
+              <label class="form-label">Vision / Design Analysis</label>
+              <select id="model-vision" class="form-select">
+                <optgroup label="OpenAI GPT-5 Series (Latest)">
+                  <option value="openai:gpt-5.2">GPT-5.2 (Best overall)</option>
+                  <option value="openai:gpt-5.2-pro">GPT-5.2 Pro (Smartest)</option>
+                  <option value="openai:gpt-5">GPT-5</option>
+                  <option value="openai:gpt-5-mini">GPT-5 Mini (Fast)</option>
+                </optgroup>
+                <optgroup label="OpenAI GPT-4 Series">
+                  <option value="openai:gpt-4.1">GPT-4.1 (Smartest non-reasoning)</option>
+                  <option value="openai:gpt-4o">GPT-4o (Great for vision)</option>
+                  <option value="openai:gpt-4o-mini">GPT-4o Mini (Faster)</option>
+                </optgroup>
+                <optgroup label="Anthropic Claude 4.5 (Latest)">
+                  <option value="anthropic:claude-opus-4-5-20251101">Claude Opus 4.5 (Best overall)</option>
+                  <option value="anthropic:claude-sonnet-4-5">Claude Sonnet 4.5 (Balanced)</option>
+                  <option value="anthropic:claude-haiku-4-5">Claude Haiku 4.5 (Fast)</option>
+                </optgroup>
+                <optgroup label="Anthropic Claude 4">
+                  <option value="anthropic:claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                  <option value="anthropic:claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                </optgroup>
+              </select>
+              <p class="form-hint">Used for: Screenshot analysis, design review, accessibility audit</p>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Code / HTML Generation</label>
+              <select id="model-generation" class="form-select">
+                <optgroup label="Anthropic Claude 4.5 (Recommended)">
+                  <option value="anthropic:claude-opus-4-5-20251101">Claude Opus 4.5 (Best for code)</option>
+                  <option value="anthropic:claude-sonnet-4-5">Claude Sonnet 4.5 (Excellent)</option>
+                  <option value="anthropic:claude-haiku-4-5">Claude Haiku 4.5 (Fast)</option>
+                </optgroup>
+                <optgroup label="Anthropic Claude 4">
+                  <option value="anthropic:claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                  <option value="anthropic:claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                  <option value="anthropic:claude-3-opus-20240229">Claude 3 Opus</option>
+                </optgroup>
+                <optgroup label="OpenAI GPT-5 Series">
+                  <option value="openai:gpt-5.2">GPT-5.2 (Excellent for code)</option>
+                  <option value="openai:gpt-5.2-pro">GPT-5.2 Pro</option>
+                  <option value="openai:gpt-5-mini">GPT-5 Mini (Fast)</option>
+                </optgroup>
+                <optgroup label="OpenAI GPT-4 Series">
+                  <option value="openai:gpt-4o">GPT-4o</option>
+                  <option value="openai:gpt-4o-mini">GPT-4o Mini</option>
+                </optgroup>
+              </select>
+              <p class="form-hint">Used for: Dashboard redesign, HTML/CSS generation</p>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Data Analysis / Chat</label>
+              <select id="model-analysis" class="form-select">
+                <optgroup label="OpenAI GPT-5 Series (Latest)">
+                  <option value="openai:gpt-5.2">GPT-5.2 (Best overall)</option>
+                  <option value="openai:gpt-5-mini">GPT-5 Mini (Balanced)</option>
+                  <option value="openai:gpt-5-nano">GPT-5 Nano (Fastest)</option>
+                </optgroup>
+                <optgroup label="OpenAI GPT-4 Series">
+                  <option value="openai:gpt-4o">GPT-4o (Balanced)</option>
+                  <option value="openai:gpt-4o-mini">GPT-4o Mini (Fast)</option>
+                </optgroup>
+                <optgroup label="Anthropic Claude 4.5 (Latest)">
+                  <option value="anthropic:claude-opus-4-5-20251101">Claude Opus 4.5 (Best)</option>
+                  <option value="anthropic:claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                  <option value="anthropic:claude-haiku-4-5">Claude Haiku 4.5 (Fast)</option>
+                </optgroup>
+                <optgroup label="Anthropic Claude 4">
+                  <option value="anthropic:claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                  <option value="anthropic:claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                  <option value="anthropic:claude-3-haiku-20240307">Claude 3 Haiku (Fastest)</option>
+                </optgroup>
+              </select>
+              <p class="form-hint">Used for: Data profiling, trend analysis, tool execution, chat</p>
+            </div>
+          </div>
+          
+          <!-- MCP Server -->
+          <div style="background: #faf5ff; padding: 12px; border-radius: 8px;">
+            <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #5b21b6;">🔌 MCP Server</h4>
+            <div class="form-group">
+              <label class="form-label">MCP Server URL</label>
+              <input type="text" id="mcp-url" class="form-input" value="ws://localhost:3001" />
+              <p class="form-hint">WebSocket URL for the MCP server</p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-cancel-settings" class="btn btn-ghost">Cancel</button>
+          <button id="btn-save-settings" class="btn btn-primary">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/tableau.extensions.1.latest.js"></script>
+  <!-- html2pdf for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- DashAgent Bundle is injected by Vite -->
+</body>
+</html>
