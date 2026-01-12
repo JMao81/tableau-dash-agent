@@ -7,8 +7,8 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "SERVER": "https://10ax.online.tableau.com",
-        "SITE_NAME": "jmaotabsandbox",
-        "PAT_NAME": "dashagent-mcp"
+        "SITE_NAME": "your-sandbox-site",
+        "PAT_NAME": "your-pat-name"
       }
     },
     "tableau": {
@@ -18,8 +18,8 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "SERVER": "https://10ax.online.tableau.com",
-        "SITE_NAME": "jmaotabsandbox",
-        "PAT_NAME": "dashagent-mcp"
+        "SITE_NAME": "your-sandbox-site",
+        "PAT_NAME": "your-pat-name"
       }
     }
   }
