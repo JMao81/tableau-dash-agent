@@ -93,12 +93,25 @@ export function convertMarkdownToHtml(markdown: string): string {
     // Tables
     if (line.includes('|')) {
       flushList();
-      const cells = line.split('|').map(c => c.trim()).filter(c => c && !c.match(/^-+$/));
+      const rawCells = line.split('|').map(c => c.trim());
+      const cells = rawCells.filter(c => c && !c.match(/^-+$/));
       if (cells.length > 0) {
         if (!inTable) inTable = true;
         // Skip separator row
         if (!line.match(/^\|?[\s-|]+\|?$/)) {
-          tableRows.push(cells.map(formatInline));
+          // Skip rows where all cells are placeholders (---, N/A, null, empty)
+          const hasRealData = cells.some(cell => {
+            const normalized = cell.toLowerCase().trim();
+            return normalized !== '' && 
+                   normalized !== '---' && 
+                   normalized !== 'n/a' && 
+                   normalized !== 'null' &&
+                   normalized !== 'undefined' &&
+                   !normalized.match(/^-+$/);
+          });
+          if (hasRealData) {
+            tableRows.push(cells.map(formatInline));
+          }
         }
         continue;
       }

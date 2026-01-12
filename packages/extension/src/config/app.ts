@@ -715,7 +715,8 @@ async function sendMessage(elements: DOMElements): Promise<void> {
     // Build system prompt
     const systemPrompt = buildSystemPrompt();
     
-    let response: string;
+    let responseContent: string = '';
+    let responseMeta: MessageMeta | undefined = undefined;
     
     // Let LLM decide semantically which tool to use - NO regex trigger words!
     // Try MCP first with hasImage flag for tool routing optimization.
@@ -723,10 +724,20 @@ async function sendMessage(elements: DOMElements): Promise<void> {
     const hasImage = !!state.uploadedImage;
     
     try {
-      console.log('[DashAgent] Attempting MCP chat...', { hasImage });
+      console.log('[DashAgent] Attempting MCP chat...', { 
+        hasImage, 
+        imageSize: state.uploadedImage ? Math.round(state.uploadedImage.length / 1024) + 'KB' : 'none',
+        message: text.substring(0, 50) 
+      });
       // Pass hasImage to MCP for intelligent tool routing (reduces tokens by 80%+)
-      response = await sendChatToMCP(text, systemPrompt, hasImage);
-      console.log('[DashAgent] MCP response received:', response?.substring(0, 100));
+      const mcpResponse = await sendChatToMCP(text, systemPrompt, hasImage);
+      responseContent = mcpResponse.content;
+      responseMeta = {
+        modelUsed: mcpResponse.modelUsed,
+        tokensUsed: mcpResponse.tokensUsed,
+        toolsCalled: mcpResponse.toolsCalled,
+      };
+      console.log('[DashAgent] MCP response received:', responseContent?.substring(0, 100));
     } catch (mcpError: any) {
       console.error('[DashAgent] MCP failed:', mcpError);
       
@@ -747,26 +758,30 @@ For every issue you identify:
 
 User request: ${text}`;
         
-        response = await callLLM(visionPrompt, state.uploadedImage, 'vision');
-        console.log('[DashAgent] Vision LLM response received:', response?.substring(0, 100));
+        responseContent = await callLLM(visionPrompt, state.uploadedImage, 'vision');
+        const visionConfig = appState.settings.getModelConfig('vision');
+        responseMeta = { modelUsed: `${visionConfig.provider}:${visionConfig.model}` };
+        console.log('[DashAgent] Vision LLM response received:', responseContent?.substring(0, 100));
       } else {
         // Other error - fall back to direct LLM without image
         console.log('[DashAgent] Falling back to direct LLM (no image)...');
         const fullPrompt = systemPrompt + '\n\nUser: ' + text;
-        response = await callLLM(fullPrompt, null, 'analysis');
-        console.log('[DashAgent] Direct LLM response:', response?.substring(0, 100));
+        responseContent = await callLLM(fullPrompt, null, 'analysis');
+        const analysisConfig = appState.settings.getModelConfig('analysis');
+        responseMeta = { modelUsed: `${analysisConfig.provider}:${analysisConfig.model}` };
+        console.log('[DashAgent] Direct LLM response:', responseContent?.substring(0, 100));
       }
     }
     
     removeThinking(thinkingId, chatMessages);
     
-    if (response) {
-      addMessage(chatMessages, 'assistant', response);
-      appState.addToHistory({ role: 'assistant', content: response });
+    if (responseContent) {
+      addMessage(chatMessages, 'assistant', responseContent, responseMeta);
+      appState.addToHistory({ role: 'assistant', content: responseContent });
       
       // Clear pending intent if the response doesn't ask for a screenshot
       // (i.e., the analysis was completed successfully)
-      if (state.pendingAnalysisIntent && !response.includes('Capture Screen') && !response.includes('screenshot')) {
+      if (state.pendingAnalysisIntent && !responseContent.includes('Capture Screen') && !responseContent.includes('screenshot')) {
         console.log('[DashAgent] Clearing pending analysis intent - analysis completed');
         state.pendingAnalysisIntent = null;
       }
@@ -809,9 +824,18 @@ function removeThinking(id: string, _chatMessages: Element | null): void {
 }
 
 /**
+ * Model metadata for display
+ */
+interface MessageMeta {
+  modelUsed?: string;
+  tokensUsed?: { prompt: number; completion: number; total: number };
+  toolsCalled?: string[];
+}
+
+/**
  * Add a message to chat
  */
-function addMessage(chatMessages: Element | null, role: string, content: string): void {
+function addMessage(chatMessages: Element | null, role: string, content: string, meta?: MessageMeta): void {
   const div = document.createElement('div');
   div.className = `message ${role}`;
   
@@ -837,12 +861,15 @@ function addMessage(chatMessages: Element | null, role: string, content: string)
      content.includes('Data Source') || content.includes('data source'))
   );
   
-  // Pattern-based detection for analysis  
+  // Pattern-based detection for analysis (expanded to include Data Exploration)
   const looksLikeAnalysis = (
-    (content.includes('Analysis') || content.includes('analysis')) &&
+    (content.includes('Analysis') || content.includes('analysis') || 
+     content.includes('Exploration') || content.includes('exploration')) &&
     (content.includes('Finding') || content.includes('finding') ||
      content.includes('Insight') || content.includes('insight') ||
-     content.includes('Recommendation') || content.includes('recommendation'))
+     content.includes('Recommendation') || content.includes('recommendation') ||
+     content.includes('Statistical') || content.includes('statistical') ||
+     content.includes('Correlation') || content.includes('correlation'))
   );
   
   const isDocumentation = hasDocTrigger || (role === 'assistant' && looksLikeDocumentation);
@@ -909,11 +936,42 @@ function addMessage(chatMessages: Element | null, role: string, content: string)
     `;
   }
   
+  // Build metadata display for assistant messages
+  let metaHtml = '';
+  if (role === 'assistant' && meta && meta.modelUsed) {
+    const modelParts = meta.modelUsed.split(':');
+    const provider = modelParts[0] === 'openai' ? 'OpenAI' : 'Anthropic';
+    const modelName = modelParts[1] || 'unknown';
+    
+    // Format token count with K notation if over 1000
+    const formatTokens = (n: number) => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : n.toString();
+    const tokensDisplay = meta.tokensUsed 
+      ? `${formatTokens(meta.tokensUsed.total)} tokens (${formatTokens(meta.tokensUsed.prompt)} in / ${formatTokens(meta.tokensUsed.completion)} out)`
+      : '';
+    
+    // Show tools called if any
+    const toolsDisplay = meta.toolsCalled && meta.toolsCalled.length > 0
+      ? `<span style="margin-left: 8px; padding: 2px 6px; background: #dbeafe; color: #1e40af; border-radius: 3px; font-size: 10px;">🔧 ${meta.toolsCalled.length} tool${meta.toolsCalled.length > 1 ? 's' : ''}</span>`
+      : '';
+    
+    metaHtml = `
+      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <span style="width: 6px; height: 6px; background: ${modelParts[0] === 'openai' ? '#10a37f' : '#d97706'}; border-radius: 50%;"></span>
+          ${provider} ${modelName}
+        </span>
+        ${tokensDisplay ? `<span style="color: #6b7280;">• ${tokensDisplay}</span>` : ''}
+        ${toolsDisplay}
+      </div>
+    `;
+  }
+  
   div.innerHTML = `
     <div class="message-avatar">${avatarContent}</div>
     <div class="message-content" style="max-width: 100%; overflow-x: auto;">
       ${htmlContent}
       ${downloadButton}
+      ${metaHtml}
     </div>
   `;
   
@@ -1027,21 +1085,37 @@ async function initializeTableau(elements: DOMElements): Promise<void> {
             } else {
               // No specific worksheet - return ALL worksheets for comprehensive analysis
               const allWorksheets: any[] = [];
+              const worksheetAttempts: any[] = []; // Track all attempts for debugging
               if (dashboard) {
+                console.log(`[DashAgent] Extracting data from ${dashboard.worksheets.length} worksheets...`);
                 for (const ws of dashboard.worksheets) {
                   try {
                     const wsData = await extractWorksheetData(ws);
+                    worksheetAttempts.push({
+                      name: ws.name,
+                      rowCount: wsData.rowCount,
+                      dataSource: wsData.dataSource,
+                      hasData: wsData.data && wsData.data.length > 0
+                    });
                     if (wsData.data && wsData.data.length > 0) {
                       allWorksheets.push(wsData);
+                      console.log(`[DashAgent] ✓ ${ws.name}: ${wsData.rowCount} rows (${wsData.dataSource})`);
+                    } else {
+                      console.log(`[DashAgent] ✗ ${ws.name}: no data available`);
                     }
                   } catch (e) {
-                    console.log(`[DashAgent] Could not get data from ${ws.name}:`, e);
+                    console.log(`[DashAgent] ✗ ${ws.name}: error -`, e);
+                    worksheetAttempts.push({
+                      name: ws.name,
+                      error: e instanceof Error ? e.message : String(e)
+                    });
                   }
                 }
               }
               responseData = {
                 worksheets: allWorksheets,
                 worksheetNames: allWorksheets.map(ws => ws.worksheet),
+                worksheetAttempts, // Include debugging info
                 analysisGoal: data.analysisGoal,
                 focusMeasures: data.focusMeasures,
                 focusDimensions: data.focusDimensions,
@@ -1204,21 +1278,45 @@ async function initializeTableau(elements: DOMElements): Promise<void> {
               const html = await renderVisualization(vizConfig);
               
               if (previewContainer) {
+                // Generate a unique chart ID for deduplication
+                const chartId = `chart-${data.title?.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() || 'untitled'}`;
+                
                 if (data.append && state.dashboardBaseHtml) {
-                  // Smart append: insert before the footer marker
-                  const marker = '<!-- DASHAGENT_APPEND_MARKER -->';
+                  // Check if chart with same title already exists (deduplication)
                   const currentHtml = previewContainer.innerHTML;
-                  if (currentHtml.includes(marker)) {
-                    // Insert new chart before the marker
-                    const chartWrapper = `<div style="margin-top: 20px;">${html}</div>`;
-                    previewContainer.innerHTML = currentHtml.replace(marker, chartWrapper + '\n    ' + marker);
+                  if (currentHtml.includes(`data-chart-id="${chartId}"`)) {
+                    console.log(`[DashAgent] Chart "${data.title}" already exists, skipping duplicate`);
+                    responseData = { success: true, rendered: false, skipped: true, reason: 'duplicate' };
+                    break;
+                  }
+                  
+                  // Smart append: prefer charts section marker, fall back to general marker
+                  const chartsMarker = '<!-- DASHAGENT_CHARTS_APPEND_MARKER -->';
+                  const generalMarker = '<!-- DASHAGENT_APPEND_MARKER -->';
+                  
+                  // Wrap chart with proper grid styling for integration
+                  const chartWrapper = `<div data-chart-id="${chartId}" style="margin-top: 20px; width: 100%; box-sizing: border-box;">${html}</div>\n    `;
+                  
+                  if (currentHtml.includes(chartsMarker)) {
+                    // Insert into charts section
+                    previewContainer.innerHTML = currentHtml.replace(chartsMarker, chartWrapper + chartsMarker);
+                  } else if (currentHtml.includes(generalMarker)) {
+                    // Fall back to general marker
+                    previewContainer.innerHTML = currentHtml.replace(generalMarker, chartWrapper + generalMarker);
                   } else {
                     // No marker found, just append
-                    previewContainer.innerHTML += html;
+                    previewContainer.innerHTML += `<div data-chart-id="${chartId}">${html}</div>`;
                   }
                 } else if (data.append) {
+                  // Check for duplicates in regular append mode too
+                  const currentHtml = previewContainer.innerHTML;
+                  if (currentHtml.includes(`data-chart-id="${chartId}"`)) {
+                    console.log(`[DashAgent] Chart "${data.title}" already exists, skipping duplicate`);
+                    responseData = { success: true, rendered: false, skipped: true, reason: 'duplicate' };
+                    break;
+                  }
                   // Regular append without dashboard base
-                  previewContainer.innerHTML += html;
+                  previewContainer.innerHTML += `<div data-chart-id="${chartId}">${html}</div>`;
                 } else {
                   // Replace entirely
                   previewContainer.innerHTML = html;
@@ -1445,6 +1543,12 @@ async function initializeTableau(elements: DOMElements): Promise<void> {
                 keyTakeaway: data.keyTakeaway
               });
               
+              console.log('[DashAgent] transform-to-story result:', {
+                theme: data.theme || 'story',
+                headline: storyResult.headline,
+                keyTakeaway: storyResult.keyTakeaway?.substring(0, 50)
+              });
+              
               if (previewContainer) {
                 previewContainer.innerHTML = storyResult.html;
                 state.generatedHtml = storyResult.html;
@@ -1478,7 +1582,6 @@ async function initializeTableau(elements: DOMElements): Promise<void> {
           }
 
           case 'analyze-iron-viz-style':
-          case 'analyze-color-harmony':
           case 'suggest-annotations': {
             // These need LLM processing - return data for MCP server to handle
             const wsData = await getWorksheetData(data.worksheet);
@@ -1487,6 +1590,43 @@ async function initializeTableau(elements: DOMElements): Promise<void> {
               image: state.uploadedImage,
               dashboardContext: appState.dashboardContext
             };
+            break;
+          }
+          
+          case 'analyze-color-harmony': {
+            // If vision analysis requested with screenshot
+            if (data.useVision && data.screenshotBase64) {
+              try {
+                const visionModelConfig = appState.settings.getModelConfig('vision');
+                if (!visionModelConfig.apiKey) {
+                  responseData = { error: 'Vision API key not configured. Please set up OpenAI or Anthropic API key in Settings.' };
+                  break;
+                }
+                
+                // Call vision LLM directly
+                const { callLLM } = await import('./llm-client');
+                const analysis = await callLLM(data.visionPrompt, data.screenshotBase64, 'vision');
+                
+                responseData = {
+                  analysis,
+                  source: 'vision',
+                };
+              } catch (e: any) {
+                console.error('[DashAgent] analyze-color-harmony vision error:', e);
+                responseData = { error: e.message };
+              }
+            } else if (data.colors && data.colors.length > 0) {
+              // Programmatic color analysis (basic)
+              responseData = {
+                colors: data.colors,
+                message: 'Color analysis with provided colors',
+                // TODO: Add programmatic harmony/accessibility checks
+              };
+            } else {
+              responseData = {
+                error: 'No colors or screenshot provided for analysis'
+              };
+            }
             break;
           }
           
@@ -1713,25 +1853,79 @@ async function getWorksheetData(targetWorksheetName?: string): Promise<any> {
 
 /**
  * Extract data from a single worksheet
+ * Tries getSummaryDataAsync first, then falls back to getUnderlyingDataAsync if summary is empty
  */
-async function extractWorksheetData(ws: any): Promise<any> {
-  const summary = await ws.getSummaryDataAsync();
-  const columns = summary.columns.map((c: any) => c.fieldName);
-  const allData: any[] = [];
+async function extractWorksheetData(ws: any, maxRows: number = 500): Promise<any> {
+  let dataSource = 'summary';
+  let columns: string[] = [];
+  let allData: any[] = [];
   
-  for (const row of summary.data) {
-    const rowObj: any = {};
-    columns.forEach((col: string, i: number) => {
-      rowObj[col] = row[i].formattedValue;
-    });
-    allData.push(rowObj);
+  // Try summary data first (aggregated marks)
+  try {
+    const summary = await ws.getSummaryDataAsync({ maxRows });
+    columns = summary.columns.map((c: any) => c.fieldName);
+    
+    for (const row of summary.data) {
+      const rowObj: any = {};
+      columns.forEach((col: string, i: number) => {
+        rowObj[col] = row[i].formattedValue;
+      });
+      allData.push(rowObj);
+    }
+  } catch (e) {
+    console.log(`[DashAgent] getSummaryDataAsync failed for ${ws.name}:`, e);
+  }
+  
+  // If summary data is empty, try underlying data as fallback
+  if (allData.length === 0) {
+    console.log(`[DashAgent] Summary data empty for ${ws.name}, trying underlying data...`);
+    try {
+      // Get the underlying tables first
+      const tables = await ws.getUnderlyingTablesAsync();
+      if (tables && tables.length > 0) {
+        // Use the first logical table
+        const tableData = await ws.getUnderlyingTableDataAsync(tables[0].id, { maxRows });
+        columns = tableData.columns.map((c: any) => c.fieldName);
+        dataSource = 'underlying';
+        
+        for (const row of tableData.data) {
+          const rowObj: any = {};
+          columns.forEach((col: string, i: number) => {
+            rowObj[col] = row[i].formattedValue;
+          });
+          allData.push(rowObj);
+        }
+        console.log(`[DashAgent] Got ${allData.length} rows from underlying table for ${ws.name}`);
+      }
+    } catch (underlyingError) {
+      console.log(`[DashAgent] getUnderlyingTableDataAsync failed for ${ws.name}:`, underlyingError);
+      
+      // Last resort: try deprecated getUnderlyingDataAsync
+      try {
+        const underlying = await ws.getUnderlyingDataAsync({ maxRows });
+        columns = underlying.columns.map((c: any) => c.fieldName);
+        dataSource = 'underlying-deprecated';
+        
+        for (const row of underlying.data) {
+          const rowObj: any = {};
+          columns.forEach((col: string, i: number) => {
+            rowObj[col] = row[i].formattedValue;
+          });
+          allData.push(rowObj);
+        }
+        console.log(`[DashAgent] Got ${allData.length} rows from deprecated underlying for ${ws.name}`);
+      } catch (deprecatedError) {
+        console.log(`[DashAgent] All data extraction methods failed for ${ws.name}:`, deprecatedError);
+      }
+    }
   }
   
   return {
     worksheet: ws.name,
     data: allData,
     columns,
-    rowCount: allData.length
+    rowCount: allData.length,
+    dataSource // 'summary', 'underlying', or 'underlying-deprecated'
   };
 }
 

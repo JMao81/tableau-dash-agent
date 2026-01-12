@@ -105,9 +105,11 @@ interface IntentMatch {
 const INTENT_PATTERNS: Array<{ pattern: RegExp; category: ToolCategory; weight: number }> = [
   // Vision/Design patterns (high priority when image present)
   { pattern: /design.*analy|analy.*design|ux.*review|ui.*review/i, category: 'vision', weight: 0.95 },  // "design analysis" - high priority
+  { pattern: /design.*review|review.*design|detailed.*review/i, category: 'vision', weight: 0.9 },  // "design review" - common phrasing
   { pattern: /review.*dashboard|critique|feedback|assess|evaluate|audit/i, category: 'vision', weight: 0.8 },
   { pattern: /iron.?viz|competition|design.*score/i, category: 'vision', weight: 0.9 },
   { pattern: /color.*harmon|palette.*analy|accessibility|colorblind/i, category: 'vision', weight: 0.85 },
+  { pattern: /check.*color|color.*check|my.*color|color.*my|analyze.*color|color.*analy/i, category: 'vision', weight: 0.9 },
   { pattern: /look.*at.*dashboard|check.*design|design.*improvement|what.*wrong/i, category: 'vision', weight: 0.85 },
   
   // Dashboard building patterns (high priority to ensure build-dashboard is called)
@@ -175,6 +177,9 @@ const NEGATIVE_PATTERNS: Array<{ pattern: RegExp; blockedCategories: ToolCategor
 function classifyIntent(message: string, hasImage: boolean): IntentMatch[] {
   const matches: IntentMatch[] = [];
   
+  // Debug: Log the message being classified
+  console.error(`[Tool Router] Classifying: "${message.substring(0, 80)}..." hasImage=${hasImage}`);
+  
   // Check for negative patterns first
   const blockedCategories = new Set<ToolCategory>();
   for (const { pattern, blockedCategories: blocked } of NEGATIVE_PATTERNS) {
@@ -185,6 +190,7 @@ function classifyIntent(message: string, hasImage: boolean): IntentMatch[] {
   
   for (const { pattern, category, weight } of INTENT_PATTERNS) {
     if (pattern.test(message)) {
+      console.error(`[Tool Router] Pattern matched: ${pattern.source} -> ${category}`);
       // Skip if this category is blocked by negative patterns
       if (blockedCategories.has(category)) {
         console.log(`[ToolRouter] Category '${category}' blocked by negative pattern`);
@@ -213,19 +219,23 @@ function classifyIntent(message: string, hasImage: boolean): IntentMatch[] {
 export function getCategoriesForRequest(message: string, hasImage: boolean): ToolCategory[] {
   const matches = classifyIntent(message, hasImage);
   
-  if (matches.length === 0) {
-    // No clear match - use core subset
-    return ['core'];
-  }
+  console.error(`[Tool Router] Intent matches: ${matches.length} - ${JSON.stringify(matches)}`);
   
   const categories: ToolCategory[] = [];
-  const primaryCategory = matches[0].category;
-  categories.push(primaryCategory);
   
-  // Add secondary categories if confidence is high enough
-  for (let i = 1; i < matches.length && i < 2; i++) {
-    if (matches[i].confidence >= 0.7) {
-      categories.push(matches[i].category);
+  if (matches.length === 0) {
+    // No clear match - use core subset as base
+    console.error(`[Tool Router] No pattern matches, starting with core`);
+    categories.push('core');
+  } else {
+    const primaryCategory = matches[0].category;
+    categories.push(primaryCategory);
+    
+    // Add secondary categories if confidence is high enough
+    for (let i = 1; i < matches.length && i < 2; i++) {
+      if (matches[i].confidence >= 0.7) {
+        categories.push(matches[i].category);
+      }
     }
   }
   
@@ -235,7 +245,10 @@ export function getCategoriesForRequest(message: string, hasImage: boolean): Too
     const lowerMessage = message.toLowerCase();
     if (lowerMessage.includes('design') || lowerMessage.includes('dashboard') || 
         lowerMessage.includes('look') || lowerMessage.includes('screenshot') ||
-        lowerMessage.includes('image') || lowerMessage.includes('review')) {
+        lowerMessage.includes('image') || lowerMessage.includes('review') ||
+        lowerMessage.includes('color') || lowerMessage.includes('palette') ||
+        lowerMessage.includes('accessibility') || lowerMessage.includes('contrast')) {
+      console.error(`[Tool Router] hasImage=true + design keyword detected, adding vision category`);
       categories.push('vision');
     }
   }

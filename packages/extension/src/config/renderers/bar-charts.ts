@@ -42,7 +42,7 @@ export function renderBarChart(
   };
   
   return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: ${theme.bg}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,${theme.isDark ? '0.3' : '0.1'});">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: ${theme.bg}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,${theme.isDark ? '0.3' : '0.1'}); width: 100%; box-sizing: border-box;">
       <h3 style="margin: 0 0 4px 0; color: ${theme.text}; font-size: 16px; font-weight: 600;">${title}</h3>
       <p style="margin: 0 0 16px 0; color: ${theme.textSecondary}; font-size: 12px;">${measureName} · ${data.length} items</p>
       
@@ -102,7 +102,7 @@ export function renderHorizontalBarChart(
   };
   
   return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: ${theme.bg}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,${theme.isDark ? '0.3' : '0.1'});">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: ${theme.bg}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,${theme.isDark ? '0.3' : '0.1'}); width: 100%; box-sizing: border-box;">
       <h3 style="margin: 0 0 4px 0; color: ${theme.text}; font-size: 16px; font-weight: 600;">${title}</h3>
       <p style="margin: 0 0 16px 0; color: ${theme.textSecondary}; font-size: 12px;">${measureName} · ${data.length} items</p>
       

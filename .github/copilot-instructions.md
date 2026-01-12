@@ -71,6 +71,85 @@ When a user asks you to:
 | **"Apply it" / "Yes, update"** | **`download-workbook` → `modify-workbook` → `publish-workbook`** |
 | "Document the dashboard" | `generate-dashboard-documentation` |
 | "Parse a workbook" | **`parse_workbook_xml`** - extracts metadata, calculated fields, parameters |
+| **"Data analytics review" / "Analysis report"** | `full-data-exploration` → Return TEXT analysis in chat |
+
+## ⚠️ CRITICAL: "Data Analytics Review" vs "Build Dashboard"
+
+These are COMPLETELY DIFFERENT requests:
+
+### "Data Analytics Review" / "Analysis Report" / "Detailed Review"
+- **Output: TEXT in chat** (not a visual dashboard)
+- Use: `full-data-exploration` or `analyze-dashboard-smart`
+- Return a **Markdown report** with statistics, insights, recommendations
+- **MUST include** at the end: `*Click the "Download Analysis PDF" button below to save this report.*`
+- The PDF button appears automatically when this text is included
+- **DO NOT call `build-dashboard`** - that creates visuals, not text analysis
+
+### 🎨 COLOR-CODED QUALITY INDICATORS (REQUIRED)
+
+When presenting analysis, use these severity indicators:
+
+| Indicator | Meaning | When to Use |
+|-----------|---------|-------------|
+| 🔴 **CRITICAL** | Requires immediate attention | Rates > 100%, all values are 0, calculation errors |
+| 🟡 **WARNING** | Should be reviewed | Rates showing 0%, high null rates (>50%), unusual patterns |
+| 🔵 **INFO** | For context only | Observations, patterns, notes that aren't problems |
+| ✅ **OK** | Passed quality check | Metrics within expected ranges |
+
+**Example with quality indicators:**
+```markdown
+## Data Quality Assessment
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Delivery Rate | 66.1% | ✅ OK |
+| Open Rate | 0.0% | 🟡 WARNING - Verify calculation |
+| Clickthrough Rate | 125% | 🔴 CRITICAL - Exceeds 100% |
+
+### 🟡 Warnings Detected
+- **Open Rate shows 0%**: This may indicate missing numerator data or a calculation issue. Verify that "Opened Email" events are being captured.
+```
+
+### Full Example Response Format:
+```markdown
+# Email Performance Analysis Report
+
+## 📊 Data Quality Assessment
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Total Emails | 1,234,567 | ✅ OK |
+| Delivery Rate | 66.1% | ✅ OK |
+| Open Rate | 41.2% | ✅ OK (above industry avg) |
+
+**Quality Score: 85/100 (Good)**
+
+## Executive Summary
+- Total emails sent: 1,234,567
+- Overall delivery rate: 66.1%
+- Open rate: 41.2% (above industry average)
+
+## Key Findings
+1. **Top Performer**: "Newsletter Q4" campaign with 52% open rate
+2. **Concentration Risk**: Top 3 programs drive 78% of volume
+
+## 🟡 Areas for Investigation
+- Some campaigns show 0% open rate - verify tracking is enabled
+- Data completeness: 15% of records missing "Campaign Name"
+
+## Recommendations
+- Investigate delivery issues in "Promo" campaigns
+- Replicate "Newsletter Q4" subject line strategies
+
+---
+*Click the "Download Analysis PDF" button below to save this report.*
+```
+
+### "Build Dashboard" / "Create Dashboard" / "Redesign Dashboard"
+- **Output: Visual dashboard** in Preview tab
+- Use: `build-dashboard` tool
+- Creates KPI cards, charts, visual elements
+- Tell user to "Check the Preview tab"
 
 ## CRITICAL: Segmentation / Breakdown Requests
 

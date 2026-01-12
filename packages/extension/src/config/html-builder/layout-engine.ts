@@ -321,6 +321,7 @@ function renderKpiCard(content: ElementContent, theme: ThemeConfig): string {
       height: 100%;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     ">
       <div style="
         font-size: 12px;
@@ -329,14 +330,18 @@ function renderKpiCard(content: ElementContent, theme: ThemeConfig): string {
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       ">${content.label || 'Metric'}</div>
       
       <div style="
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 700;
         color: ${color};
         margin-bottom: 8px;
-        line-height: 1;
+        line-height: 1.1;
+        word-break: break-word;
       ">${content.value || '0'}</div>
       
       ${content.change ? `
@@ -349,7 +354,7 @@ function renderKpiCard(content: ElementContent, theme: ThemeConfig): string {
       ` : ''}
       
       ${sparklineSvg ? `
-        <div style="margin-top: auto; opacity: 0.8;">
+        <div style="margin-top: auto; opacity: 0.8; width: 100%;">
           ${sparklineSvg}
         </div>
       ` : ''}
@@ -470,17 +475,35 @@ function renderSectionHeader(content: ElementContent, theme: ThemeConfig): strin
  * Render chart wrapper
  */
 function renderChart(content: ElementContent, theme: ThemeConfig): string {
-  if (content.rawHtml) return content.rawHtml;
-  if (content.chartHtml) return content.chartHtml;
+  // Generate chart ID from title for deduplication
+  const chartId = `chart-${(content.title || 'untitled').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+  
+  const containerStyle = `
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  `.replace(/\s+/g, ' ').trim();
+  
+  if (content.rawHtml) {
+    // Wrap rawHtml with data-chart-id for deduplication and proper sizing
+    return `<div data-chart-id="${chartId}" style="${containerStyle}">${content.rawHtml}</div>`;
+  }
+  if (content.chartHtml) {
+    // Wrap chartHtml with data-chart-id for deduplication and proper sizing
+    return `<div data-chart-id="${chartId}" style="${containerStyle}">${content.chartHtml}</div>`;
+  }
   
   return `
-    <div style="
+    <div data-chart-id="${chartId}" style="
       background: ${theme.cardBg || 'white'};
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       border: 1px solid ${theme.border || '#e5e7eb'};
       height: 100%;
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
     ">
       <div style="
         font-size: 14px;
@@ -569,8 +592,19 @@ function renderNarrative(content: ElementContent, theme: ThemeConfig): string {
  * Render data table wrapper
  */
 function renderDataTable(content: ElementContent, theme: ThemeConfig): string {
-  if (content.tableHtml) return content.tableHtml;
-  if (content.rawHtml) return content.rawHtml;
+  const containerStyle = `
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow-x: auto;
+  `.replace(/\s+/g, ' ').trim();
+  
+  if (content.tableHtml) {
+    return `<div style="${containerStyle}">${content.tableHtml}</div>`;
+  }
+  if (content.rawHtml) {
+    return `<div style="${containerStyle}">${content.rawHtml}</div>`;
+  }
   
   return `
     <div style="
@@ -579,6 +613,9 @@ function renderDataTable(content: ElementContent, theme: ThemeConfig): string {
       padding: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       border: 1px solid ${theme.border || '#e5e7eb'};
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
     ">
       <div style="
         font-size: 14px;
@@ -703,7 +740,8 @@ export function layoutElements(
   const sectionHtmlParts: string[] = [];
   
   for (const [sectionName, sectionElements] of sections) {
-    if (sectionElements.length === 0) continue;
+    // Allow charts section to be processed even when empty (for append marker)
+    if (sectionElements.length === 0 && sectionName !== 'charts') continue;
     
     // Hero section - full width, no grid
     if (sectionName === 'hero') {
@@ -742,14 +780,24 @@ export function layoutElements(
       continue;
     }
     
-    // Charts section - balanced grid
-    if (sectionName === 'charts' && sectionElements.length > 0) {
-      const chartGrid = buildBalancedChartGrid(sectionElements, theme);
-      sectionHtmlParts.push(`
-        <div style="margin-bottom: 20px;">
-          ${chartGrid}
-        </div>
-      `);
+    // Charts section - balanced grid (always include for append support)
+    if (sectionName === 'charts') {
+      if (sectionElements.length > 0) {
+        const chartGrid = buildBalancedChartGrid(sectionElements, theme);
+        sectionHtmlParts.push(`
+          <div id="dashagent-charts-section" style="margin-bottom: 20px;">
+            ${chartGrid}
+            <!-- DASHAGENT_CHARTS_APPEND_MARKER -->
+          </div>
+        `);
+      } else {
+        // Empty charts section placeholder for appending later
+        sectionHtmlParts.push(`
+          <div id="dashagent-charts-section" style="margin-bottom: 20px;">
+            <!-- DASHAGENT_CHARTS_APPEND_MARKER -->
+          </div>
+        `);
+      }
       continue;
     }
     
@@ -906,16 +954,20 @@ function buildBalancedChartGrid(charts: LayoutElement[], theme: ThemeConfig): st
   
   if (count === 0) return '';
   
-  // Single chart - full width
+  // Single chart - full width with proper container
   if (count === 1) {
-    return renderElement(charts[0], theme);
+    return `
+      <div style="width: 100%; box-sizing: border-box;">
+        ${renderElement(charts[0], theme)}
+      </div>
+    `;
   }
   
   // 2 charts - side by side
   if (count === 2) {
     return `
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-        ${charts.map(c => renderElement(c, theme)).join('')}
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; width: 100%;">
+        ${charts.map(c => `<div style="min-width: 0;">${renderElement(c, theme)}</div>`).join('')}
       </div>
     `;
   }
@@ -930,20 +982,22 @@ function buildBalancedChartGrid(charts: LayoutElement[], theme: ThemeConfig): st
   if (isFirstChartWide && count === 3) {
     // Wide chart on top, 2 below
     return `
-      <div style="margin-bottom: 20px;">
-        ${renderElement(charts[0], theme)}
-      </div>
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-        ${renderElement(charts[1], theme)}
-        ${renderElement(charts[2], theme)}
+      <div style="width: 100%;">
+        <div style="margin-bottom: 20px; width: 100%;">
+          ${renderElement(charts[0], theme)}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; width: 100%;">
+          <div style="min-width: 0;">${renderElement(charts[1], theme)}</div>
+          <div style="min-width: 0;">${renderElement(charts[2], theme)}</div>
+        </div>
       </div>
     `;
   }
   
-  // Default: 2 per row
+  // Default: responsive grid that fills width
   return `
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
-      ${charts.map(c => renderElement(c, theme)).join('')}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; width: 100%;">
+      ${charts.map(c => `<div style="min-width: 0;">${renderElement(c, theme)}</div>`).join('')}
     </div>
   `;
 }
@@ -1112,7 +1166,16 @@ export interface GeneratedInsight {
 }
 
 /**
- * Generate insights from analyzed data
+ * Generate insights from analyzed data using STATISTICAL methods.
+ * 
+ * This function uses only mathematical/statistical thresholds:
+ * - 80/20 Pareto principle (universal statistical concept)
+ * - Standard deviation for outlier detection (statistical)
+ * - Minimal significance thresholds to avoid noise
+ * 
+ * NO domain-specific thresholds (like "good open rate is 25%").
+ * Insights describe WHAT the data shows, not whether it's "good" or "bad".
+ * LLM should interpret business meaning based on context.
  * 
  * @param measures - Array of measure information from analyzed data
  * @param breakdowns - Array of breakdown data from analyzed data
@@ -1153,9 +1216,15 @@ export function generateDataInsights(
   
   const insights: GeneratedInsight[] = [];
   
+  // Filter out identifier fields from measures (like "Id", "key", etc.)
+  const filteredMeasures = measures.filter(m => !isIdentifierField(m.name));
+  
+  // Filter out breakdowns where the measure is an identifier
+  const filteredBreakdowns = breakdowns.filter(bd => !isIdentifierField(bd.measure.name));
+  
   // 1. Concentration Analysis (80/20 rule)
-  if (includeConcentration && breakdowns.length > 0) {
-    for (const bd of breakdowns) {
+  if (includeConcentration && filteredBreakdowns.length > 0) {
+    for (const bd of filteredBreakdowns) {
       if (bd.data.length >= 3) {
         // Normalize data to use 'name' field (handle both label and dimension)
         const normalizedData = bd.data.map(d => ({
@@ -1195,9 +1264,16 @@ export function generateDataInsights(
   
   // 2. Trend Analysis (if we have time-series values)
   if (includeTrends) {
-    for (const m of measures) {
+    for (const m of filteredMeasures) {
       if (m.values && m.values.length >= 5) {
         const trend = calculateTrend(m.values);
+        
+        // Skip if 100% change - indicates non-time-series data (first or last value is 0)
+        // Also skip very extreme changes (>90%) as they're usually data artifacts
+        if (Math.abs(trend.percentChange) >= 90) {
+          console.log(`[generateInsights] Skipping suspicious trend for ${m.name}: ${trend.percentChange}% (first=${trend.firstValue}, last=${trend.lastValue})`);
+          continue;
+        }
         
         // Only show meaningful trends (≥5% change) and not 'flat' direction
         if (trend.direction !== 'flat' && Math.abs(trend.percentChange) >= 5) {
@@ -1241,7 +1317,7 @@ export function generateDataInsights(
   
   // 3. Anomaly Detection (outliers in values)
   if (includeAnomalies) {
-    for (const m of measures) {
+    for (const m of filteredMeasures) {
       if (m.values && m.values.length >= 5) {
         const { outliers, mean, stdDev } = detectOutliers(m.values);
         
@@ -1264,11 +1340,11 @@ export function generateDataInsights(
   }
   
   // 4. Performance Insights (scan ALL breakdowns, find most significant gap)
-  if (includePerformance && breakdowns.length > 0) {
+  if (includePerformance && filteredBreakdowns.length > 0) {
     let bestInsight: GeneratedInsight | null = null;
     let bestRatio = 0;
     
-    for (const breakdown of breakdowns) {
+    for (const breakdown of filteredBreakdowns) {
       if (!breakdown || breakdown.data.length < 2) continue;
       
       // Normalize data to use 'name' field
@@ -1368,6 +1444,17 @@ function formatMeasureName(name: string): string {
     .replace(/[_-]/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase())
     .trim();
+}
+
+/**
+ * Check if a field name represents an identifier (not a meaningful metric)
+ */
+function isIdentifierField(name: string): boolean {
+  const coreName = name
+    .replace(/^(AGG|SUM|AVG|COUNT|CNTD|MIN|MAX|ATTR)\s*\(\s*/gi, '')
+    .replace(/\s*\)$/g, '')
+    .trim();
+  return /^(id|ids|pk|key|guid|uuid|record_?id|row_?id|unique_?id|identifier)$/i.test(coreName);
 }
 
 /**

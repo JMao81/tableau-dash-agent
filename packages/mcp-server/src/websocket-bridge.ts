@@ -228,17 +228,18 @@ export class WebSocketBridge {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    const { requestId, chatMessage, conversationHistory, modelConfig, visionModelConfig, systemPrompt, dashboardContext, hasImage } = message;
+    const { requestId, chatMessage, conversationHistory, modelConfig, visionModelConfig, generationModelConfig, systemPrompt, dashboardContext, hasImage } = message;
 
     console.error(`💬 Chat request from extension: "${chatMessage?.substring(0, 50)}..." hasImage=${!!hasImage}`);
 
     try {
-      const response = await handleChat(
+      const chatResponse = await handleChat(
         {
           message: chatMessage,
           conversationHistory: conversationHistory || [],
           modelConfig,
           visionModelConfig,  // Pass user-selected vision model for analyze-design etc.
+          generationModelConfig,  // Pass user-selected generation model for fallback HTML etc.
           systemPrompt: systemPrompt || '',
           dashboardContext,
           hasImage: !!hasImage,  // Pass to tool router for intent classification
@@ -246,10 +247,14 @@ export class WebSocketBridge {
         this
       );
 
+      // Send response with metadata for display
       client.ws.send(JSON.stringify({
         type: 'chat-response',
         requestId,
-        response,
+        response: chatResponse.content,
+        modelUsed: chatResponse.modelUsed,
+        tokensUsed: chatResponse.tokensUsed,
+        toolsCalled: chatResponse.toolsCalled,
         success: true,
       }));
     } catch (error) {

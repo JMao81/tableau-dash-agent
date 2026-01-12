@@ -199,16 +199,31 @@ export async function sendMcpRequest(toolName: string, params: any): Promise<any
 }
 
 /**
+ * Chat response with metadata for display
+ */
+export interface ChatResponseWithMeta {
+  content: string;
+  modelUsed?: string;       // e.g., "openai:gpt-5.2"
+  tokensUsed?: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  toolsCalled?: string[];
+}
+
+/**
  * Send chat message to MCP server for centralized LLM handling
  * @param message - The user's message
  * @param systemPrompt - System prompt for the LLM
  * @param hasImage - Whether the request includes an image (for tool routing optimization)
+ * @returns ChatResponseWithMeta containing the response and metadata
  */
 export async function sendChatToMCP(
   message: string, 
   systemPrompt: string,
   hasImage: boolean = false
-): Promise<string> {
+): Promise<ChatResponseWithMeta> {
   const modelConfig = appState.settings.getModelConfig('analysis');
   
   if (!modelConfig.apiKey) {
@@ -234,7 +249,13 @@ export async function sendChatToMCP(
           if (data.error) {
             reject(new Error(data.error));
           } else {
-            resolve(data.response);
+            // Return full response with metadata
+            resolve({
+              content: data.response,
+              modelUsed: data.modelUsed,
+              tokensUsed: data.tokensUsed,
+              toolsCalled: data.toolsCalled,
+            });
           }
         } else if (data.requestId && data.type !== 'chat-response' && globalOnRequest) {
           // This is a tool request (like get-image) that came in during the chat
@@ -252,6 +273,9 @@ export async function sendChatToMCP(
     // Get vision model config for tools that need direct vision API calls
     const visionModelConfig = appState.settings.getModelConfig('vision');
     
+    // Get generation model config for fallback HTML generation
+    const generationModelConfig = appState.settings.getModelConfig('generation');
+    
     // Send chat request to MCP server with hasImage flag for tool routing
     const chatPayload = {
       type: 'chat',
@@ -267,6 +291,11 @@ export async function sendChatToMCP(
         provider: visionModelConfig.provider,
         model: visionModelConfig.model,
         apiKey: visionModelConfig.apiKey,
+      },
+      generationModelConfig: {
+        provider: generationModelConfig.provider,
+        model: generationModelConfig.model,
+        apiKey: generationModelConfig.apiKey,
       },
       systemPrompt,
       dashboardContext: appState.dashboardContext,

@@ -28,7 +28,6 @@ export type {
   KpiCardOptions,
   BarChartOptions,
   LineChartOptions,
-  HeaderOptions,
   InsightOptions,
   MetricComparisonOptions
 } from './components';
@@ -75,3 +74,18 @@ export {
   generateDataInsights,
   insightsToElements
 } from './layout-engine';
+
+// LLM Context Builder (for inference-based insights)
+export type {
+  MeasureStats,
+  SegmentStats,
+  LLMContext
+} from './llm-context';
+
+export {
+  buildLLMContext,
+  buildMeasureStats,
+  buildSegmentStats,
+  formatContextForLLM,
+  generateDataSummary
+} from './llm-context';

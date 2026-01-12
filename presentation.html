@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashAgent - Hackathon Presentation</title>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00d4ff;
+            --secondary: #7c3aed;
+            --accent: #f0abfc;
+            --neon-green: #00ff88;
+            --neon-pink: #ff00aa;
+            --dark: #0a0a0f;
+            --dark-card: #12121a;
+            --light: #ffffff;
+            --gray: #a1a1aa;
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #00ff88;
+            --warning: #fbbf24;
+            --danger: #ff4757;
+            --info: #00d4ff;
+            --glow-primary: 0 0 20px rgba(0, 212, 255, 0.5);
+            --glow-secondary: 0 0 20px rgba(124, 58, 237, 0.5);
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            overflow: hidden;
+        }
+
+        /* Web3 Background */
+        .presentation-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(240, 171, 252, 0.05) 0%, transparent 70%),
+                var(--dark);
+        }
+
+        /* Animated grid background */
+        .presentation-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        .slides-wrapper {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .slides {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            opacity: 0;
+            transform: translateX(100%) scale(0.95);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            z-index: 10;
+        }
+
+        .slide.prev {
+            transform: translateX(-100%) scale(0.95);
+        }
+
+        /* Title Slide */
+        .slide.title-slide {
+            text-align: center;
+            background: 
+                radial-gradient(ellipse at center, rgba(124, 58, 237, 0.2) 0%, transparent 60%),
+                transparent;
+        }
+
+        .slide.title-slide h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--light);
+            text-shadow: var(--glow-primary);
+            letter-spacing: -2px;
+            margin-bottom: 20px;
+        }
+
+        .slide.title-slide .title-highlight {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .slide.title-slide p {
+            font-size: 1.6rem;
+            margin-bottom: 10px;
+            color: var(--gray);
+        }
+
+        .slide.title-slide .subtitle {
+            font-size: 1rem;
+            color: var(--primary);
+            margin-top: 40px;
+            padding: 10px 20px;
+            border: 1px solid var(--primary);
+            border-radius: 30px;
+            display: inline-block;
+        }
+
+        /* Content slides */
+        .slide.content-slide {
+            justify-content: flex-start;
+            padding-top: 80px;
+        }
+
+        .slide.demo-slide {
+            background: 
+                radial-gradient(ellipse at center, rgba(0, 255, 136, 0.1) 0%, transparent 60%),
+                transparent;
+        }
+
+        .slide.thank-you {
+            background: 
+                radial-gradient(ellipse at center, rgba(124, 58, 237, 0.3) 0%, transparent 60%),
+                transparent;
+        }
+
+        /* Typography */
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            color: var(--light);
+        }
+
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 600;
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3 .icon {
+            width: 24px;
+            height: 24px;
+            color: var(--primary);
+        }
+
+        .content {
+            width: 100%;
+            max-width: 1200px;
+            text-align: left;
+        }
+
+        .slide.title-slide .content {
+            text-align: center;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin-left: 0;
+            margin-bottom: 20px;
+            list-style: none;
+        }
+
+        li {
+            font-size: 1.25rem;
+            margin-bottom: 18px;
+            line-height: 1.7;
+            color: var(--gray);
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        li .icon {
+            width: 22px;
+            height: 22px;
+            color: var(--primary);
+            flex-shrink: 0;
+            margin-top: 3px;
+        }
+
+        li strong {
+            color: var(--light);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            font-size: 1rem;
+            background: var(--dark-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        table th {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.3) 0%, rgba(0, 212, 255, 0.2) 100%);
+            color: var(--light);
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        table td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--gray);
+        }
+
+        table tr:last-child td {
+            border-bottom: none;
+        }
+
+        table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--dark-card);
+            padding: 25px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 25px 0;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--gray);
+            line-height: 1.6;
+        }
+
+        /* Highlight/Quote */
+        .highlight {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%);
+            padding: 25px 35px;
+            border-radius: 12px;
+            margin: 25px 0;
+            font-size: 1.2rem;
+            color: var(--light);
+            border-left: 4px solid var(--primary);
+            font-style: normal;
+        }
+
+        .highlight::before {
+            display: none;
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .grid-item {
+            padding: 25px;
+            background: var(--dark-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .grid-item:hover {
+            border-color: var(--primary);
+            box-shadow: var(--glow-primary);
+            transform: translateY(-2px);
+        }
+
+        .grid-item h3 {
+            margin-top: 0;
+            font-size: 1.2rem;
+        }
+
+        .grid-item ul {
+            margin-left: 0;
+        }
+
+        .grid-item li {
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+
+        /* Status Indicators */
+        .status-ok { 
+            color: var(--success); 
+            font-weight: 600;
+        }
+        .status-warning { 
+            color: var(--warning); 
+            font-weight: 600;
+        }
+        .status-critical { 
+            color: var(--danger); 
+            font-weight: 600;
+        }
+        .status-info { 
+            color: var(--info); 
+            font-weight: 600;
+        }
+
+        /* Video Demo Text */
+        .video-demo-text {
+            width: 100%;
+            padding: 60px 40px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+            border: 2px dashed var(--primary);
+            border-radius: 16px;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .video-demo-text h3 {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .video-demo-text p {
+            color: var(--gray);
+            font-size: 1.1rem;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 15px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid var(--border);
+            font-size: 0.95rem;
+            z-index: 100;
+        }
+
+        .slide-counter {
+            font-size: 1rem;
+            color: var(--primary);
+            font-weight: 600;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button {
+            background: transparent;
+            color: var(--light);
+            border: 1px solid var(--primary);
+            padding: 10px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        button:hover {
+            background: var(--primary);
+            color: var(--dark);
+            box-shadow: var(--glow-primary);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            transition: width 0.3s ease;
+            box-shadow: var(--glow-primary);
+        }
+
+        /* Keyboard hint - hidden */
+        .keyboard-hint {
+            display: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .slide { padding: 40px; }
+            h1 { font-size: 2.5rem; }
+            h2 { font-size: 2rem; }
+            li { font-size: 1.1rem; }
+            .grid { grid-template-columns: 1fr; }
+            .slide.title-slide h1 { font-size: 3rem; }
+        }
+
+        @media (max-width: 768px) {
+            .slide { padding: 30px; }
+            .slide.title-slide h1 { font-size: 2.5rem; }
+            h2 { font-size: 1.5rem; }
+            li { font-size: 1rem; }
+            .footer { flex-direction: column; gap: 10px; padding: 15px 30px; }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide.active .content {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Glowing orb decorations */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: rgba(124, 58, 237, 0.3);
+            top: -100px;
+            right: -100px;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: rgba(0, 212, 255, 0.2);
+            bottom: -50px;
+            left: -50px;
+        }
+
+        /* Tech Stack Badges */
+        .tech-stack {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 30px;
+            justify-content: center;
+        }
+
+        .tech-badge {
+            padding: 10px 20px;
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            font-size: 0.95rem;
+            color: var(--gray);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tech-badge .icon {
+            width: 18px;
+            height: 18px;
+            color: var(--primary);
+        }
+
+        /* Model Preferences Badge */
+        .feature-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            margin: 5px;
+            font-size: 0.95rem;
+            color: var(--light);
+        }
+
+        .feature-badge .icon {
+            width: 16px;
+            height: 16px;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="slides-wrapper">
+            <div class="slides" id="slides">
+                <!-- Slide 1: Title -->
+                <div class="slide title-slide active">
+                    <div class="orb orb-1"></div>
+                    <div class="orb orb-2"></div>
+                    <div class="content">
+                        <h1><span class="title-highlight">DashAgent</span></h1>
+                        <p>Your AI-Powered BI Analyst for Tableau</p>
+                        <p class="subtitle">Tableau + AI Innovation Hackathon 2025</p>
+                        <div class="tech-stack">
+                            <span class="tech-badge"><i data-lucide="puzzle" class="icon"></i> Tableau Extensions API</span>
+                            <span class="tech-badge"><i data-lucide="cpu" class="icon"></i> Model Context Protocol</span>
+                            <span class="tech-badge"><i data-lucide="bot" class="icon"></i> Any LLM Provider</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 2: The Problem -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>The Problem</h2>
+                        <h3><i data-lucide="alert-triangle" class="icon"></i> Every Organization Has This Pain Point</h3>
+                        <ul>
+                            <li><i data-lucide="layout-dashboard" class="icon"></i> <span><strong>Dashboards are everywhere</strong> — but insights are buried</span></li>
+                            <li><i data-lucide="users" class="icon"></i> <span><strong>BI teams are overwhelmed</strong> — too many requests, not enough analysts</span></li>
+                            <li><i data-lucide="help-circle" class="icon"></i> <span><strong>Self-service BI promised freedom</strong> — but users still ask "what does this mean?"</span></li>
+                            <li><i data-lucide="unlink" class="icon"></i> <span><strong>The gap:</strong> Data is visualized, but not <em>understood</em></span></li>
+                        </ul>
+                        <div class="highlight">We have 500 dashboards... but no one knows what story they're telling.</div>
+                    </div>
+                </div>
+
+                <!-- Slide 3: Introducing DashAgent -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Introducing DashAgent</h2>
+                        <h3><i data-lucide="sparkles" class="icon"></i> Your AI-Powered Second Opinion Analyst</h3>
+                        <ul>
+                            <li><i data-lucide="search" class="icon"></i> <span><strong>Deep Data Analysis</strong> — Not just what the numbers are, but what they <em>mean</em></span></li>
+                            <li><i data-lucide="zap" class="icon"></i> <span><strong>Instant Insights</strong> — Concentration risks, anomalies, trends in seconds</span></li>
+                            <li><i data-lucide="shield-check" class="icon"></i> <span><strong>Data Quality Checks</strong> — Flags issues before they become problems</span></li>
+                            <li><i data-lucide="palette" class="icon"></i> <span><strong>Design Recommendations</strong> — Iron Viz-quality dashboard feedback</span></li>
+                        </ul>
+                        <div class="tech-stack" style="justify-content: flex-start; margin-top: 40px;">
+                            <span class="feature-badge"><i data-lucide="settings" class="icon"></i> User-selectable AI models</span>
+                            <span class="feature-badge"><i data-lucide="plug" class="icon"></i> Works with GPT & Claude</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 4: Second Opinion Philosophy -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>The "Second Opinion" Philosophy</h2>
+                        <h3><i data-lucide="lightbulb" class="icon"></i> What Makes DashAgent Different</h3>
+                        <table>
+                            <tr>
+                                <th>Traditional BI Tools</th>
+                                <th>DashAgent</th>
+                            </tr>
+                            <tr>
+                                <td>Shows you data</td>
+                                <td>Explains what data means</td>
+                            </tr>
+                            <tr>
+                                <td>You ask questions</td>
+                                <td>It proactively flags issues</td>
+                            </tr>
+                            <tr>
+                                <td>Fixed reports</td>
+                                <td>Conversational analysis</td>
+                            </tr>
+                            <tr>
+                                <td>Domain-specific</td>
+                                <td>Works with ANY dashboard</td>
+                            </tr>
+                        </table>
+                        <h3 style="margin-top: 30px;"><i data-lucide="target" class="icon"></i> Our Approach:</h3>
+                        <ol>
+                            <li><i data-lucide="eye" class="icon"></i> <span><strong>Observe</strong> — Analyze the actual data in your dashboard</span></li>
+                            <li><i data-lucide="file-text" class="icon"></i> <span><strong>Report</strong> — Present findings with quality indicators</span></li>
+                            <li><i data-lucide="flag" class="icon"></i> <span><strong>Flag</strong> — Highlight anomalies with color-coded severity</span></li>
+                            <li><i data-lucide="compass" class="icon"></i> <span><strong>Recommend</strong> — Suggest next steps for investigation</span></li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Slide 5: Key Capabilities -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Key Capabilities</h2>
+                        <div class="grid">
+                            <div class="grid-item">
+                                <h3><i data-lucide="bar-chart-3" class="icon"></i> Data Analysis</h3>
+                                <ul>
+                                    <li><i data-lucide="activity" class="icon"></i> <span>Quick profiling & summaries</span></li>
+                                    <li><i data-lucide="pie-chart" class="icon"></i> <span>Concentration/Pareto (80/20)</span></li>
+                                    <li><i data-lucide="git-compare" class="icon"></i> <span>Segment comparisons</span></li>
+                                    <li><i data-lucide="trending-up" class="icon"></i> <span>Trend detection & anomalies</span></li>
+                                </ul>
+                            </div>
+                            <div class="grid-item">
+                                <h3><i data-lucide="clipboard-check" class="icon"></i> Data Quality</h3>
+                                <ul>
+                                    <li><i data-lucide="check-circle" class="icon"></i> <span>Automatic validation</span></li>
+                                    <li><i data-lucide="alert-circle" class="icon"></i> <span>Color-coded severity ratings</span></li>
+                                    <li><i data-lucide="x-circle" class="icon"></i> <span>Flags rates > 100%, 0% values</span></li>
+                                    <li><i data-lucide="download" class="icon"></i> <span>Exportable PDF reports</span></li>
+                                </ul>
+                            </div>
+                            <div class="grid-item">
+                                <h3><i data-lucide="brush" class="icon"></i> Design Review</h3>
+                                <ul>
+                                    <li><i data-lucide="award" class="icon"></i> <span>Iron Viz-style scoring</span></li>
+                                    <li><i data-lucide="droplet" class="icon"></i> <span>Color harmony checks</span></li>
+                                    <li><i data-lucide="message-square" class="icon"></i> <span>Annotation suggestions</span></li>
+                                    <li><i data-lucide="book-open" class="icon"></i> <span>Story transformation</span></li>
+                                </ul>
+                            </div>
+                            <div class="grid-item">
+                                <h3><i data-lucide="layout" class="icon"></i> Visualization</h3>
+                                <ul>
+                                    <li><i data-lucide="columns" class="icon"></i> <span>Smart dashboard building</span></li>
+                                    <li><i data-lucide="image" class="icon"></i> <span>Chart rendering</span></li>
+                                    <li><i data-lucide="type" class="icon"></i> <span>Storytelling elements</span></li>
+                                    <li><i data-lucide="sparkle" class="icon"></i> <span>Automatic insights</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 6: Architecture Overview -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Architecture Overview</h2>
+                        <h3><i data-lucide="network" class="icon"></i> Hybrid MCP + Browser Extension</h3>
+                        <pre><code>┌──────────────────────────────────────────────────────────────────────────┐
+│                         VS CODE / AI CLIENT                              │
+│   GitHub Copilot / Claude / Any MCP Client                               │
+│   "Analyze this dashboard and tell me what I'm missing"                  │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │ MCP Protocol (stdio)
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           MCP SERVERS                                    │
+│  ┌─────────────────────────────┐  ┌────────────────────────────────┐     │
+│  │  DashAgent MCP (26 tools)   │  │  Official Tableau MCP          │     │
+│  │  • Analysis & Visualization │  │  • query-datasource            │     │
+│  │  • Design Review & Quality  │  │  • list-datasources            │     │
+│  │  • Filter/Parameter Control │  │  • get-datasource-metadata     │     │
+│  └─────────────────────────────┘  └────────────────────────────────┘     │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │ WebSocket Bridge (port 3001)
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        TABLEAU ENVIRONMENT                               │
+│   ┌────────────────────────────────────────────────────────────────┐     │
+│   │   DashAgent Extension (Browser)                                │     │
+│   │   • Chat UI for natural language interaction                   │     │
+│   │   • Real-time data extraction via Tableau Extensions API       │     │
+│   │   • HTML canvas for AI-generated insights & dashboards         │     │
+│   │   • Filter/parameter control                                   │     │
+│   └────────────────────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────────────────────┘</code></pre>
+                    </div>
+                </div>
+
+                <!-- Slide 7: Demo Introduction -->
+                <div class="slide demo-slide">
+                    <div class="content">
+                        <h2>Let's See DashAgent in Action</h2>
+                        <h3><i data-lucide="play-circle" class="icon"></i> Demo Scenario: Email Marketing Performance</h3>
+                        <ul>
+                            <li><i data-lucide="check" class="icon"></i> <span>Connecting DashAgent to a live Tableau dashboard</span></li>
+                            <li><i data-lucide="check" class="icon"></i> <span>Running a data analytics review with quality checks</span></li>
+                            <li><i data-lucide="check" class="icon"></i> <span>Getting color-coded insights and recommendations</span></li>
+                            <li><i data-lucide="check" class="icon"></i> <span>Building a redesigned dashboard with AI assistance</span></li>
+                        </ul>
+                        <div class="video-demo-text">
+                            <h3><i data-lucide="video" class="icon"></i> Video Demo Here</h3>
+                            <p>Data Analysis & Quality Checks</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 8: Data Quality in Action -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Data Quality in Action</h2>
+                        <h3><i data-lucide="shield" class="icon"></i> Real-Time Validation with Color-Coded Indicators</h3>
+                        <table>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Value</th>
+                                <th>Status</th>
+                            </tr>
+                            <tr>
+                                <td>Total Emails</td>
+                                <td>1.2M</td>
+                                <td><span class="status-ok">OK</span></td>
+                            </tr>
+                            <tr>
+                                <td>Delivery Rate</td>
+                                <td>66.1%</td>
+                                <td><span class="status-ok">OK</span></td>
+                            </tr>
+                            <tr>
+                                <td>Open Rate</td>
+                                <td>0.0%</td>
+                                <td><span class="status-warning">WARNING</span></td>
+                            </tr>
+                            <tr>
+                                <td>Clickthrough</td>
+                                <td>125%</td>
+                                <td><span class="status-critical">CRITICAL</span></td>
+                            </tr>
+                        </table>
+                        <div class="highlight">Problems caught <strong>before</strong> they mislead decision-makers</div>
+                    </div>
+                </div>
+
+                <!-- Slide 9: Video Demo Part 2 -->
+                <div class="slide demo-slide">
+                    <div class="content">
+                        <h2>Dashboard Redesign in Action</h2>
+                        <ul>
+                            <li><i data-lucide="message-circle" class="icon"></i> <span>Asking "Build me an executive dashboard"</span></li>
+                            <li><i data-lucide="wand-2" class="icon"></i> <span>DashAgent creating KPIs and charts automatically</span></li>
+                            <li><i data-lucide="tag" class="icon"></i> <span>Applying label overrides for clean naming</span></li>
+                            <li><i data-lucide="book-open" class="icon"></i> <span>Adding storytelling elements with transform-to-story</span></li>
+                            <li><i data-lucide="eye" class="icon"></i> <span>Final dashboard preview in the extension</span></li>
+                        </ul>
+                        <div class="video-demo-text">
+                            <h3><i data-lucide="video" class="icon"></i> Video Demo Here</h3>
+                            <p>Dashboard Redesign & Visualization</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 10: Design Intelligence -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Design Intelligence</h2>
+                        <h3><i data-lucide="sparkles" class="icon"></i> AI-Powered Design Review</h3>
+                        <p style="font-size: 1.2rem; margin-bottom: 30px; color: var(--gray);">DashAgent doesn't just analyze data — it reviews your <em>design</em>:</p>
+                        <ul>
+                            <li><i data-lucide="trophy" class="icon"></i> <span><strong>Iron Viz Scoring</strong> — Compare against competition-winning designs</span></li>
+                            <li><i data-lucide="palette" class="icon"></i> <span><strong>Color Harmony Analysis</strong> — Ensure accessible, professional palettes</span></li>
+                            <li><i data-lucide="map-pin" class="icon"></i> <span><strong>Annotation Suggestions</strong> — Where to add context for storytelling</span></li>
+                            <li><i data-lucide="book-open" class="icon"></i> <span><strong>Story Transformation</strong> — Turn data into narrative with key takeaways</span></li>
+                        </ul>
+                        <div class="highlight">Your dashboard scores 72/100. Consider improving visual hierarchy and adding a key takeaway headline.</div>
+                    </div>
+                </div>
+
+                <!-- Slide 11: Video Demo Part 3 -->
+                <div class="slide demo-slide">
+                    <div class="content">
+                        <h2>Quick Wins Demo</h2>
+                        <ul>
+                            <li><i data-lucide="message-circle" class="icon"></i> <span>"Which Program Name has the highest Open Rate?" → Instant segment analysis</span></li>
+                            <li><i data-lucide="palette" class="icon"></i> <span>"Generate a color palette for corporate finance" → Downloadable Tableau palette</span></li>
+                            <li><i data-lucide="image" class="icon"></i> <span>"What's wrong with this design?" → Vision AI design review</span></li>
+                        </ul>
+                        <div class="video-demo-text">
+                            <h3><i data-lucide="video" class="icon"></i> Video Demo Here</h3>
+                            <p>Quick Capability Demos</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 12: Technical Innovation -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Technical Innovation</h2>
+                        <table>
+                            <tr>
+                                <th>Component</th>
+                                <th>Technology</th>
+                                <th>Innovation</th>
+                            </tr>
+                            <tr>
+                                <td>MCP Server</td>
+                                <td>Node.js + TypeScript</td>
+                                <td>26 specialized AI tools</td>
+                            </tr>
+                            <tr>
+                                <td>Extension</td>
+                                <td>Tableau Extensions API</td>
+                                <td>Real-time WebSocket bridge</td>
+                            </tr>
+                            <tr>
+                                <td>Analysis Engine</td>
+                                <td>Custom Statistics</td>
+                                <td>Domain-agnostic quality checks</td>
+                            </tr>
+                            <tr>
+                                <td>Design AI</td>
+                                <td>Vision LLM API Integration</td>
+                                <td>Screenshot-based design review</td>
+                            </tr>
+                            <tr>
+                                <td>Rendering</td>
+                                <td>Dynamic HTML Builder</td>
+                                <td>Smart layout engine</td>
+                            </tr>
+                        </table>
+                        <h3 style="margin-top: 30px;"><i data-lucide="award" class="icon"></i> Key Technical Achievements:</h3>
+                        <ul>
+                            <li><i data-lucide="database" class="icon"></i> <span>Efficient data extraction using aggregation queries (not raw rows)</span></li>
+                            <li><i data-lucide="radio" class="icon"></i> <span>WebSocket bridge for real-time bidirectional communication</span></li>
+                            <li><i data-lucide="sliders" class="icon"></i> <span>User-configurable model preferences (OpenAI, Anthropic, Google, etc.)</span></li>
+                            <li><i data-lucide="shield" class="icon"></i> <span><strong>LLM Security & Guardrails</strong> — Input validation, output sanitization, prompt injection protection</span></li>
+                            <li><i data-lucide="download" class="icon"></i> <span>PDF export with styled Markdown analysis reports</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Slide 13: Why This Matters -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Why This Matters</h2>
+                        <div class="grid">
+                            <div class="grid-item">
+                                <h3><i data-lucide="users" class="icon"></i> For BI Teams</h3>
+                                <ul>
+                                    <li><i data-lucide="trending-down" class="icon"></i> <span>Reduce "what does this mean?" by 50%+</span></li>
+                                    <li><i data-lucide="shield-alert" class="icon"></i> <span>Catch issues before they reach executives</span></li>
+                                    <li><i data-lucide="list-checks" class="icon"></i> <span>Standardize analysis workflows</span></li>
+                                </ul>
+                            </div>
+                            <div class="grid-item">
+                                <h3><i data-lucide="briefcase" class="icon"></i> For Business Users</h3>
+                                <ul>
+                                    <li><i data-lucide="message-square" class="icon"></i> <span>Instant "second opinion" on any dashboard</span></li>
+                                    <li><i data-lucide="graduation-cap" class="icon"></i> <span>Understand insights without BI expertise</span></li>
+                                    <li><i data-lucide="file-text" class="icon"></i> <span>Export professional reports in seconds</span></li>
+                                </ul>
+                            </div>
+                            <div class="grid-item">
+                                <h3><i data-lucide="building" class="icon"></i> For Organizations</h3>
+                                <ul>
+                                    <li><i data-lucide="trending-up" class="icon"></i> <span>Maximize ROI on Tableau investment</span></li>
+                                    <li><i data-lucide="users-2" class="icon"></i> <span>Democratize data literacy</span></li>
+                                    <li><i data-lucide="heart-handshake" class="icon"></i> <span>Build trust in data-driven decisions</span></li>
+                                </ul>
+                            </div>
+                            <div class="grid-item">
+                                <h3><i data-lucide="rocket" class="icon"></i> For Innovation</h3>
+                                <ul>
+                                    <li><i data-lucide="plug" class="icon"></i> <span>MCP protocol for AI integration</span></li>
+                                    <li><i data-lucide="puzzle" class="icon"></i> <span>Extensible tool architecture</span></li>
+                                    <li><i data-lucide="globe" class="icon"></i> <span>Works with any MCP client</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 14: Future Vision -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Future Vision</h2>
+                        <h3><i data-lucide="map" class="icon"></i> Roadmap to Production</h3>
+                        <ol>
+                            <li><i data-lucide="package" class="icon"></i> <span><strong>Productionize</strong> — Package for enterprise deployment with security & governance</span></li>
+                            <li><i data-lucide="layers" class="icon"></i> <span><strong>Multi-Dashboard Analysis</strong> — Cross-dashboard insights and comparisons</span></li>
+                            <li><i data-lucide="globe" class="icon"></i> <span><strong>Tableau Cloud Native</strong> — Direct integration without browser extension</span></li>
+                            <li><i data-lucide="git-branch" class="icon"></i> <span><strong>Version Control for Insights</strong> — Track analysis history and changes</span></li>
+                            <li><i data-lucide="bot" class="icon"></i> <span><strong>Custom Agent Templates</strong> — Pre-configured analysis for industry verticals</span></li>
+                        </ol>
+                        <div class="highlight">Every Tableau user has an AI analyst in their pocket, making data accessible to everyone.</div>
+                    </div>
+                </div>
+
+                <!-- Slide 15: Try It Yourself -->
+                <div class="slide content-slide">
+                    <div class="content">
+                        <h2>Try It Yourself</h2>
+                        <h3><i data-lucide="code" class="icon"></i> Get Started</h3>
+                        <ul>
+                            <li><i data-lucide="github" class="icon"></i> <span><strong>GitHub:</strong> <a href="https://github.com/JMao81/tableau-dash-agent" target="_blank" style="color: var(--primary); text-decoration: none;">github.com/JMao81/tableau-dash-agent</a></span></li>
+                        </ul>
+                        <h3 style="margin-top: 20px;"><i data-lucide="list-checks" class="icon"></i> Requirements:</h3>
+                        <ul>
+                            <li><i data-lucide="layout-dashboard" class="icon"></i> <span>Tableau Desktop or Tableau Server/Cloud</span></li>
+                            <li><i data-lucide="code-2" class="icon"></i> <span>VS Code with GitHub Copilot (or any MCP client)</span></li>
+                            <li><i data-lucide="server" class="icon"></i> <span>Node.js 18+</span></li>
+                        </ul>
+                        <h3 style="margin-top: 20px;"><i data-lucide="terminal" class="icon"></i> Quick Start:</h3>
+                        <pre><code>git clone https://github.com/JMao81/tableau-dash-agent.git
+npm install
+npm run dev</code></pre>
+                    </div>
+                </div>
+
+                <!-- Slide 16: Thank You -->
+                <div class="slide thank-you">
+                    <div class="orb orb-1"></div>
+                    <div class="orb orb-2"></div>
+                    <div class="content" style="text-align: center;">
+                        <h1 style="font-size: 3.5rem; margin-bottom: 40px;">Thank You</h1>
+                        <h2 style="font-size: 2rem; margin-bottom: 60px;">DashAgent: AI-Powered Second Opinion for Tableau</h2>
+                        
+                        <p style="font-size: 1.3rem; margin-bottom: 20px; color: var(--gray);">Developer: Junying Mao</p>
+                        <p style="font-size: 1.3rem; margin-bottom: 20px; color: var(--gray);">www.linkedin.com/in/junying-mao</p>
+
+                        <div class="highlight" style="max-width: 600px; margin: 40px auto;">
+                            Stop looking at dashboards. Start understanding them.
+                        </div>
+                        
+                        <p style="font-size: 1rem; margin-top: 60px; color: var(--primary);">#TableauAI #MCP #Hackathon2025</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="slide-counter">
+                <span id="currentSlide">1</span> / <span id="totalSlides">16</span>
+            </div>
+            <div class="controls">
+                <button id="prevBtn" onclick="previousSlide()">Previous</button>
+                <button id="nextBtn" onclick="nextSlide()">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) {
+                currentSlide = totalSlides;
+            }
+            if (n < 1) {
+                currentSlide = 1;
+            }
+
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active', 'prev');
+                if (index + 1 === currentSlide) {
+                    slide.classList.add('active');
+                } else if (index + 1 < currentSlide) {
+                    slide.classList.add('prev');
+                }
+            });
+
+            document.getElementById('currentSlide').textContent = currentSlide;
+            updateProgressBar();
+            updateButtons();
+        }
+
+        function nextSlide() {
+            currentSlide++;
+            showSlide(currentSlide);
+        }
+
+        function previousSlide() {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+
+        function updateProgressBar() {
+            const progress = (currentSlide / totalSlides) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        function updateButtons() {
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                previousSlide();
+            } else if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>

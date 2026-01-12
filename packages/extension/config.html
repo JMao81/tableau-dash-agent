@@ -208,6 +208,10 @@
     .tools-table .cat-analysis { background: #fef3c7; color: #92400e; }
     .tools-table .cat-design { background: #f3e8ff; color: #7c3aed; }
     .tools-table .cat-docs { background: #e0e7ff; color: #3730a3; }
+    .tools-table .cat-orchestration { background: #fce7f3; color: #9d174d; }
+    .tools-table .cat-interpretation { background: #ffedd5; color: #c2410c; }
+    .tools-table .cat-interaction { background: #cffafe; color: #0e7490; }
+    .tools-table .cat-utility { background: #f1f5f9; color: #475569; }
     .tools-table .dep-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin: 1px; }
     .tools-table .dep-ext { background: #fee2e2; color: #991b1b; }
     .tools-table .dep-mcp { background: #cffafe; color: #0e7490; }
@@ -629,7 +633,7 @@
                 
                 <details style="margin-top:8px;">
                   <summary style="cursor:pointer; color:var(--accent); font-weight:500; font-size:13px; padding:6px 0;">
-                    💡 Show available commands...
+                    💡 Show example commands...
                   </summary>
                   
                   <div style="margin-top:8px; padding-left:4px;">
@@ -638,12 +642,6 @@
                       <li><strong>"Review my dashboard design"</strong> — Iron Viz-style scorecard</li>
                       <li><strong>"Check my colors"</strong> — Palette harmony & accessibility</li>
                       <li><strong>"Create a palette for [topic]"</strong> — Custom color palette</li>
-                    </ul>
-                    
-                    <p style="margin-top:10px;font-weight:600;color:var(--accent);font-size:13px;">AI Image Generation</p>
-                    <ul style="margin-top:4px;font-size:13px;">
-                      <li><strong>"Create icons for my dashboard"</strong> — Custom AI-generated icons</li>
-                      <li><strong>"Design a background"</strong> — Subtle dashboard backgrounds</li>
                     </ul>
                     
                     <p style="margin-top:10px;font-weight:600;color:var(--accent);font-size:13px;">Storytelling & Analysis</p>
@@ -725,7 +723,7 @@
         <div id="panel-tools" class="panel">
           <div class="tools-panel">
             <h2>DashAgent MCP Tools</h2>
-            <p class="subtitle">18 custom tools available for AI-powered dashboard analysis and design. Each tool integrates with Tableau Extensions API and/or Tableau MCP Server.</p>
+            <p class="subtitle">26 custom tools available for AI-powered dashboard analysis and design. Each tool integrates with Tableau Extensions API and/or Tableau MCP Server.</p>
             
             <table class="tools-table">
               <thead>
@@ -737,90 +735,122 @@
                 </tr>
               </thead>
               <tbody>
-                <!-- Data Profiling -->
+                <!-- ═══════════════ ORCHESTRATION (1) ═══════════════ -->
                 <tr>
-                  <td class="tool-name">profile_data_for_visualization</td>
-                  <td><span class="category-badge cat-data">Data</span></td>
-                  <td><em>Primary.</em> Profiles worksheet data for quality, structure, and viz recommendations. <strong>Call first before any visualization.</strong></td>
+                  <td class="tool-name">agentic_analyst</td>
+                  <td><span class="category-badge cat-orchestration">Orchestration</span></td>
+                  <td><strong>Primary orchestrator.</strong> High-level workflow manager with 4 modes: full-analysis, quick-insights, design-critique, redesign.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-ai">LLM</span></td>
+                </tr>
+
+                <!-- ═══════════════ DATA ANALYSIS (6) ═══════════════ -->
+                <tr>
+                  <td class="tool-name">analyze_dashboard_smart</td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
+                  <td><strong>Primary analysis tool.</strong> 5 modes: quick-profile, segment-deep-dive, concentration, trend, anomaly.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-mcp">Tableau MCP</span><span class="dep-badge dep-api">query-datasource</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">full_data_exploration</td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
+                  <td>Comprehensive data science analysis across all dimensions and measures.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-mcp">Tableau MCP</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">get_analysis_strategy</td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
+                  <td>Returns optimized query templates for Tableau MCP (concentration, segment, trend, anomaly, top-performers).</td>
+                  <td><span class="dep-badge dep-mcp">Tableau MCP</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">get_semantic_metadata</td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
+                  <td>Fetches datasource field metadata (types, roles, calculated fields).</td>
                   <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getDataSourcesAsync</span></td>
                 </tr>
                 <tr>
                   <td class="tool-name">get_worksheet_data</td>
-                  <td><span class="category-badge cat-data">Data</span></td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
                   <td>Retrieves raw data from Tableau worksheets with optional limits and data quality analysis.</td>
                   <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getSummaryDataAsync</span></td>
                 </tr>
                 <tr>
-                  <td class="tool-name">apply_filter</td>
-                  <td><span class="category-badge cat-data">Data</span></td>
-                  <td>Applies categorical or range filters to worksheet data.</td>
-                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">applyFilterAsync</span></td>
-                </tr>
-                <tr>
-                  <td class="tool-name">set_parameter</td>
-                  <td><span class="category-badge cat-data">Data</span></td>
-                  <td>Sets Tableau parameter values to update dashboard calculations.</td>
-                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">changeValueAsync</span></td>
+                  <td class="tool-name">profile_data_for_visualization</td>
+                  <td><span class="category-badge cat-analysis">Analysis</span></td>
+                  <td>Profiles worksheet data for quality, structure, and viz recommendations. <strong>Call before visualization.</strong></td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getDataSourcesAsync</span></td>
                 </tr>
 
-                <!-- Visualization -->
+                <!-- ═══════════════ INTERPRETATION (2) ═══════════════ -->
                 <tr>
-                  <td class="tool-name">render_visualization</td>
-                  <td><span class="category-badge cat-viz">Viz</span></td>
-                  <td>Renders single charts (bar, line, pie, donut, area, table, KPI). Supports themes, average lines, and aggregation.</td>
-                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getSummaryDataAsync</span></td>
+                  <td class="tool-name">interpret_concentration</td>
+                  <td><span class="category-badge cat-interpretation">Interpretation</span></td>
+                  <td>Interprets Pareto/80-20 concentration analysis results with risk assessment.</td>
+                  <td><span class="dep-badge dep-ai">LLM</span></td>
                 </tr>
+                <tr>
+                  <td class="tool-name">interpret_segments</td>
+                  <td><span class="category-badge cat-interpretation">Interpretation</span></td>
+                  <td>Interprets segment comparison analysis with performance variance insights.</td>
+                  <td><span class="dep-badge dep-ai">LLM</span></td>
+                </tr>
+
+                <!-- ═══════════════ VISUALIZATION (5) ═══════════════ -->
                 <tr>
                   <td class="tool-name">build_dashboard</td>
-                  <td><span class="category-badge cat-viz">Viz</span></td>
-                  <td>Creates complete multi-panel dashboards with KPIs, charts, and professional styling. One-shot dashboard builder.</td>
+                  <td><span class="category-badge cat-viz">Visualization</span></td>
+                  <td>Creates complete multi-panel dashboards with KPIs, charts, and professional styling.</td>
                   <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getSummaryDataAsync</span></td>
                 </tr>
                 <tr>
-                  <td class="tool-name">clear_visualization</td>
-                  <td><span class="category-badge cat-viz">Viz</span></td>
-                  <td>Clears the preview panel content.</td>
-                  <td><span class="dep-badge dep-ext">DOM Only</span></td>
+                  <td class="tool-name">confirm_chart_fields</td>
+                  <td><span class="category-badge cat-viz">Visualization</span></td>
+                  <td>Validates field selections before rendering charts to prevent errors.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">render_visualization</td>
+                  <td><span class="category-badge cat-viz">Visualization</span></td>
+                  <td>Renders single charts (bar, line, pie, donut, area, table, KPI). Supports themes and aggregation.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getSummaryDataAsync</span></td>
                 </tr>
                 <tr>
                   <td class="tool-name">toggle_tooltips</td>
-                  <td><span class="category-badge cat-viz">Viz</span></td>
+                  <td><span class="category-badge cat-viz">Visualization</span></td>
                   <td>Toggles tooltip visibility on rendered charts.</td>
                   <td><span class="dep-badge dep-ext">DOM Only</span></td>
                 </tr>
-
-                <!-- Analysis -->
                 <tr>
-                  <td class="tool-name">analyze_dashboard_smart</td>
-                  <td><span class="category-badge cat-analysis">Analysis</span></td>
-                  <td>Primary data analysis tool. Supports quick-profile, segment-deep-dive, concentration, trend, and anomaly analysis.</td>
-                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-mcp">Tableau MCP</span><span class="dep-badge dep-api">query-datasource</span></td>
-                </tr>
-                <tr>
-                  <td class="tool-name">analyze_design</td>
-                  <td><span class="category-badge cat-analysis">Analysis</span></td>
-                  <td>Vision AI analysis of dashboard design. Evaluates UX/UI, storytelling, and accessibility from screenshots.</td>
-                  <td><span class="dep-badge dep-ai">GPT-4 Vision</span><span class="dep-badge dep-ext">Screenshot</span></td>
+                  <td class="tool-name">transform_to_story</td>
+                  <td><span class="category-badge cat-viz">Visualization</span></td>
+                  <td>Transforms data into storytelling format with hero headlines, key takeaways, and actions.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-ai">LLM</span></td>
                 </tr>
 
-                <!-- Design Tools -->
-                <tr>
-                  <td class="tool-name">analyze_iron_viz_style</td>
-                  <td><span class="category-badge cat-design">Design</span></td>
-                  <td>Evaluates dashboard against Iron Viz competition principles. Returns scorecard with improvement suggestions.</td>
-                  <td><span class="dep-badge dep-ai">GPT-4 Vision</span><span class="dep-badge dep-ext">Screenshot</span></td>
-                </tr>
+                <!-- ═══════════════ DESIGN (5) ═══════════════ -->
                 <tr>
                   <td class="tool-name">analyze_color_harmony</td>
                   <td><span class="category-badge cat-design">Design</span></td>
                   <td>Analyzes color palette for harmony, WCAG accessibility, and colorblind safety.</td>
-                  <td><span class="dep-badge dep-ai">GPT-4 Vision</span><span class="dep-badge dep-ext">Color Analysis</span></td>
+                  <td><span class="dep-badge dep-ai">Vision AI</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">analyze_design</td>
+                  <td><span class="category-badge cat-design">Design</span></td>
+                  <td>Vision AI analysis of dashboard design. Evaluates UX/UI, storytelling, and accessibility.</td>
+                  <td><span class="dep-badge dep-ai">Vision AI</span><span class="dep-badge dep-ext">Screenshot</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">analyze_iron_viz_style</td>
+                  <td><span class="category-badge cat-design">Design</span></td>
+                  <td>Evaluates dashboard against Iron Viz competition principles. Returns scorecard.</td>
+                  <td><span class="dep-badge dep-ai">Vision AI</span><span class="dep-badge dep-ext">Screenshot</span></td>
                 </tr>
                 <tr>
                   <td class="tool-name">generate_tableau_palette</td>
                   <td><span class="category-badge cat-design">Design</span></td>
                   <td>Generates custom Tableau color palette (.tps Preferences file) with font recommendations.</td>
-                  <td><span class="dep-badge dep-ai">LLM</span><span class="dep-badge dep-ext">TPS Generator</span></td>
+                  <td><span class="dep-badge dep-ai">LLM</span></td>
                 </tr>
                 <tr>
                   <td class="tool-name">suggest_annotations</td>
@@ -828,24 +858,53 @@
                   <td>Suggests where to add annotations in the dashboard with text recommendations.</td>
                   <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-ai">LLM</span></td>
                 </tr>
+
+                <!-- ═══════════════ INTERACTION (3) ═══════════════ -->
                 <tr>
-                  <td class="tool-name">transform_to_story</td>
-                  <td><span class="category-badge cat-design">Design</span></td>
-                  <td>Transforms data into storytelling format with hero headlines, key takeaways, and action recommendations.</td>
-                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-ai">LLM</span></td>
+                  <td class="tool-name">apply_filter</td>
+                  <td><span class="category-badge cat-interaction">Interaction</span></td>
+                  <td>Applies categorical or range filters to worksheet data via natural language.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">applyFilterAsync</span></td>
                 </tr>
-                <!-- Documentation -->
+                <tr>
+                  <td class="tool-name">get_dashboard_screenshot</td>
+                  <td><span class="category-badge cat-interaction">Interaction</span></td>
+                  <td>Captures dashboard screenshot for vision AI analysis.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">set_parameter</td>
+                  <td><span class="category-badge cat-interaction">Interaction</span></td>
+                  <td>Sets Tableau parameter values to update dashboard calculations.</td>
+                  <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">changeValueAsync</span></td>
+                </tr>
+
+                <!-- ═══════════════ DOCUMENTATION (1) ═══════════════ -->
                 <tr>
                   <td class="tool-name">generate_documentation</td>
-                  <td><span class="category-badge cat-docs">Docs</span></td>
-                  <td>Auto-generates documentation for the connected Tableau dashboard.</td>
+                  <td><span class="category-badge cat-docs">Documentation</span></td>
+                  <td>Auto-generates Markdown documentation for the connected Tableau dashboard.</td>
                   <td><span class="dep-badge dep-ext">Extensions API</span><span class="dep-badge dep-api">getDataSourcesAsync</span></td>
                 </tr>
+
+                <!-- ═══════════════ UTILITY (3) ═══════════════ -->
                 <tr>
-                  <td class="tool-name">parse_workbook_xml</td>
-                  <td><span class="category-badge cat-docs">Docs</span></td>
-                  <td>Extracts metadata, calculated fields, and parameters from Tableau workbook XML.</td>
-                  <td><span class="dep-badge dep-mcp">Tableau MCP</span><span class="dep-badge dep-api">download-workbook</span></td>
+                  <td class="tool-name">check_connection</td>
+                  <td><span class="category-badge cat-utility">Utility</span></td>
+                  <td>Verifies Extension ↔ MCP Server WebSocket connection.</td>
+                  <td><span class="dep-badge dep-ext">WebSocket</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">clear_canvas</td>
+                  <td><span class="category-badge cat-utility">Utility</span></td>
+                  <td>Clears the preview panel content.</td>
+                  <td><span class="dep-badge dep-ext">DOM Only</span></td>
+                </tr>
+                <tr>
+                  <td class="tool-name">render_component</td>
+                  <td><span class="category-badge cat-utility">Utility</span></td>
+                  <td>Renders custom HTML components in the preview panel.</td>
+                  <td><span class="dep-badge dep-ext">DOM Only</span></td>
                 </tr>
               </tbody>
             </table>
@@ -854,17 +913,21 @@
               <h3 style="font-size: 14px; margin-bottom: 12px;">Dependency Legend</h3>
               <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px;">
                 <div><span class="dep-badge dep-ext">Extensions API</span> Tableau Extensions JavaScript API</div>
-                <div><span class="dep-badge dep-api">API Method</span> Specific Tableau API method called</div>
-                <div><span class="dep-badge dep-mcp">Tableau MCP</span> Tableau MCP Server (REST API)</div>
-                <div><span class="dep-badge dep-ai">AI Model</span> AI/LLM integration (GPT-4, DALL-E, etc.)</div>
+                <div><span class="dep-badge dep-api">API Method</span> Specific Tableau API method (e.g., getSummaryDataAsync)</div>
+                <div><span class="dep-badge dep-mcp">Tableau MCP</span> Official Tableau MCP Server for data queries</div>
+                <div><span class="dep-badge dep-ai">LLM</span> Large Language Model for text generation</div>
+                <div><span class="dep-badge dep-ai">Vision AI</span> Vision-capable AI for image analysis</div>
+                <div><span class="dep-badge dep-ext">WebSocket</span> Extension ↔ MCP Server communication</div>
+                <div><span class="dep-badge dep-ext">DOM Only</span> Client-side rendering only (no API calls)</div>
               </div>
             </div>
 
             <div style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, #eff6ff 0%, #f3e8ff 100%); border-radius: var(--radius-md);">
               <h3 style="font-size: 14px; margin-bottom: 8px;">Recommended Workflow</h3>
               <ol style="font-size: 12px; color: var(--text-secondary); padding-left: 20px;">
-                <li><strong>profile_data_for_visualization</strong> — Understand your data first</li>
+                <li><strong>agentic_analyst</strong> (mode: full-analysis) — High-level orchestration</li>
                 <li><strong>analyze_dashboard_smart</strong> — Get insights and recommendations</li>
+                <li><strong>profile_data_for_visualization</strong> — Understand your data before rendering</li>
                 <li><strong>build_dashboard</strong> or <strong>render_visualization</strong> — Create visualizations</li>
                 <li><strong>analyze_iron_viz_style</strong> — Get design feedback</li>
                 <li><strong>generate_tableau_palette</strong> — Enhance colors if needed</li>

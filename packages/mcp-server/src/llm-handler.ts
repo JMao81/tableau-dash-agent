@@ -40,9 +40,24 @@ interface ChatRequest {
   conversationHistory: ChatMessage[];
   modelConfig: ModelConfig;
   visionModelConfig?: ModelConfig;  // User-selected vision model for analyze-design etc.
+  generationModelConfig?: ModelConfig;  // User-selected model for fallback HTML generation
   systemPrompt: string;
   dashboardContext?: any;
   hasImage?: boolean;  // New: indicates if request includes an image
+}
+
+/**
+ * Chat response with metadata for display
+ */
+export interface ChatResponse {
+  content: string;
+  modelUsed: string;       // e.g., "openai:gpt-5.2"
+  tokensUsed: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  toolsCalled?: string[];  // List of tools called during this response
 }
 
 /**
@@ -51,14 +66,24 @@ interface ChatRequest {
 async function callOpenAI(
   request: ChatRequest,
   bridge: WebSocketBridge
-): Promise<string> {
+): Promise<ChatResponse> {
   const { message, conversationHistory, modelConfig, systemPrompt, hasImage, dashboardContext } = request;
+  
+  // Track token usage and tools called
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
+  const toolsCalled: string[] = [];
+  let visionModelUsed: string | null = null;  // Track if vision model was used by a tool
   
   // Guardrail check on user input
   const guardrailResult = checkGuardrails(message);
   if (!guardrailResult.allowed) {
     console.error(`[Guardrails] Blocked request: ${guardrailResult.message}`);
-    return `I can't help with that request. ${guardrailResult.message}`;
+    return {
+      content: `I can't help with that request. ${guardrailResult.message}`,
+      modelUsed: `${modelConfig.provider}:${modelConfig.model}`,
+      tokensUsed: { prompt: 0, completion: 0, total: 0 },
+    };
   }
   if (guardrailResult.flags.length > 0) {
     console.error(`[Guardrails] Flags: ${guardrailResult.flags.join(', ')}`);
@@ -86,7 +111,9 @@ async function callOpenAI(
 
   // Use tool router - only get relevant tools based on intent
   const openaiTools = getOpenAIToolsForRequest(safeMessage, !!hasImage);
-  console.error(`[LLM Handler] Sending ${openaiTools.length} tools (was 37+ before routing)`);
+  const toolNames = openaiTools.map((t: any) => t.function?.name).filter(Boolean);
+  console.error(`[LLM Handler] hasImage=${!!hasImage}, message="${safeMessage.substring(0, 50)}..."`);
+  console.error(`[LLM Handler] Sending ${openaiTools.length} tools: ${toolNames.join(', ')}`);
   
   let response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -110,6 +137,12 @@ async function callOpenAI(
 
   let data = await response.json();
   let assistantMessage = data.choices[0].message;
+  
+  // Track token usage from first response
+  if (data.usage) {
+    totalPromptTokens += data.usage.prompt_tokens || 0;
+    totalCompletionTokens += data.usage.completion_tokens || 0;
+  }
 
   // Handle tool calls in a loop
   while (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
@@ -118,6 +151,9 @@ async function callOpenAI(
     for (const toolCall of assistantMessage.tool_calls) {
       const toolName = toolCall.function.name;
       const toolArgs = JSON.parse(toolCall.function.arguments);
+      
+      // Track tools called
+      toolsCalled.push(toolName);
 
       console.error(`[LLM Handler] Executing tool: ${toolName}`);
 
@@ -146,6 +182,12 @@ async function callOpenAI(
       } catch (e) {
         console.error(`[LLM Handler] Tool error:`, e);
         toolResult = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
+      }
+
+      // Check if this tool used a vision model (e.g., analyze-design)
+      if (toolResult && typeof toolResult === 'object' && toolResult.visionModel) {
+        visionModelUsed = toolResult.visionModel;
+        console.error(`[LLM Handler] Vision model used by ${toolName}: ${visionModelUsed}`);
       }
 
       // Always let the LLM format the response for better output
@@ -182,9 +224,25 @@ async function callOpenAI(
 
     data = await response.json();
     assistantMessage = data.choices[0].message;
+    
+    // Track token usage from subsequent responses
+    if (data.usage) {
+      totalPromptTokens += data.usage.prompt_tokens || 0;
+      totalCompletionTokens += data.usage.completion_tokens || 0;
+    }
   }
 
-  return assistantMessage.content || 'Action completed.';
+  return {
+    content: assistantMessage.content || 'Action completed.',
+    // If a vision tool was called, report the vision model; otherwise report the chat model
+    modelUsed: visionModelUsed || `${modelConfig.provider}:${modelConfig.model}`,
+    tokensUsed: {
+      prompt: totalPromptTokens,
+      completion: totalCompletionTokens,
+      total: totalPromptTokens + totalCompletionTokens,
+    },
+    toolsCalled: toolsCalled.length > 0 ? toolsCalled : undefined,
+  };
 }
 
 /**
@@ -193,14 +251,24 @@ async function callOpenAI(
 async function callAnthropic(
   request: ChatRequest,
   bridge: WebSocketBridge
-): Promise<string> {
+): Promise<ChatResponse> {
   const { message, conversationHistory, modelConfig, systemPrompt, hasImage, dashboardContext } = request;
+  
+  // Track token usage and tools called
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
+  const toolsCalled: string[] = [];
+  let visionModelUsed: string | null = null;  // Track if vision model was used by a tool
   
   // Guardrail check on user input
   const guardrailResult = checkGuardrails(message);
   if (!guardrailResult.allowed) {
     console.error(`[Guardrails] Blocked request: ${guardrailResult.message}`);
-    return `I can't help with that request. ${guardrailResult.message}`;
+    return {
+      content: `I can't help with that request. ${guardrailResult.message}`,
+      modelUsed: `${modelConfig.provider}:${modelConfig.model}`,
+      tokensUsed: { prompt: 0, completion: 0, total: 0 },
+    };
   }
   if (guardrailResult.flags.length > 0) {
     console.error(`[Guardrails] Flags: ${guardrailResult.flags.join(', ')}`);
@@ -252,6 +320,12 @@ async function callAnthropic(
   }
 
   let data = await response.json();
+  
+  // Track token usage (Anthropic returns input_tokens and output_tokens)
+  if (data.usage) {
+    totalPromptTokens += data.usage.input_tokens || 0;
+    totalCompletionTokens += data.usage.output_tokens || 0;
+  }
 
   // Handle tool use in a loop
   while (data.stop_reason === 'tool_use') {
@@ -260,6 +334,9 @@ async function callAnthropic(
 
     const toolName = toolUseBlock.name;
     const toolArgs = toolUseBlock.input;
+    
+    // Track tools called
+    toolsCalled.push(toolName);
 
     console.error(`[LLM Handler] Executing tool: ${toolName}`);
 
@@ -319,6 +396,12 @@ async function callAnthropic(
       toolResult = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
     }
 
+    // Check if this tool used a vision model (e.g., analyze-design)
+    if (toolResult && typeof toolResult === 'object' && toolResult.visionModel) {
+      visionModelUsed = toolResult.visionModel;
+      console.error(`[LLM Handler] Vision model used by ${toolName}: ${visionModelUsed}`);
+    }
+
     // Always let the LLM format the response for better output
     const toolResultString = typeof toolResult === 'string'
       ? toolResult
@@ -361,20 +444,38 @@ async function callAnthropic(
     }
 
     data = await response.json();
+    
+    // Track token usage from subsequent responses
+    if (data.usage) {
+      totalPromptTokens += data.usage.input_tokens || 0;
+      totalCompletionTokens += data.usage.output_tokens || 0;
+    }
   }
 
   // Extract text response
   const textBlock = data.content?.find((block: any) => block.type === 'text');
-  return textBlock?.text || 'Action completed.';
+  
+  return {
+    content: textBlock?.text || 'Action completed.',
+    // If a vision tool was called, report the vision model; otherwise report the chat model
+    modelUsed: visionModelUsed || `${modelConfig.provider}:${modelConfig.model}`,
+    tokensUsed: {
+      prompt: totalPromptTokens,
+      completion: totalCompletionTokens,
+      total: totalPromptTokens + totalCompletionTokens,
+    },
+    toolsCalled: toolsCalled.length > 0 ? toolsCalled : undefined,
+  };
 }
 
 /**
  * Main chat handler - routes to appropriate LLM provider
+ * Returns ChatResponse with content, model used, and token usage
  */
 export async function handleChat(
   request: ChatRequest,
   bridge: WebSocketBridge
-): Promise<string> {
+): Promise<ChatResponse> {
   const { modelConfig, message, hasImage } = request;
 
   if (!modelConfig.apiKey) {
@@ -382,11 +483,12 @@ export async function handleChat(
     throw new Error(`Please configure your ${providerName} API key in Settings`);
   }
 
-  // Cache API keys and vision model for tools that need to make direct API calls (e.g., vision analysis)
+  // Cache API keys, vision model, and generation model for tools that need to make direct API calls
   setCachedApiKeys(
     modelConfig.provider === 'openai' ? modelConfig.apiKey : undefined,
     modelConfig.provider === 'anthropic' ? modelConfig.apiKey : undefined,
-    request.visionModelConfig  // Pass user-selected vision model config
+    request.visionModelConfig,  // Pass user-selected vision model config
+    request.generationModelConfig  // Pass user-selected generation model config
   );
 
   // Log routing stats

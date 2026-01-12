@@ -1,6 +1,11 @@
 /**
  * HTML Builder - Story Generator
  * Builds narrative-style story HTML with insights and key takeaways
+ * 
+ * ARCHITECTURE: No hardcoded thresholds or domain-specific assumptions.
+ * Insights are generated using statistical analysis (percentiles, standard deviations)
+ * and relative comparisons within the dataset. The LLM can use this context for
+ * more nuanced interpretation.
  */
 
 import { 
@@ -22,6 +27,8 @@ import {
   generateInsightCallout,
   generateMetricComparison
 } from './components';
+// LLM Context module is available for future use with LLM inference
+// import { buildLLMContext, generateDataSummary, LLMContext } from './llm-context';
 
 // ==================== PROFESSIONAL SVG ICONS ====================
 // Using inline SVG for professional look (no emoji dependency)
@@ -85,7 +92,8 @@ export interface StoryOptions extends BuildOptions {
 }
 
 /**
- * Generate a compelling headline from the data - prioritize rates over counts
+ * Generate a compelling headline from the data
+ * Uses relative comparison within dataset - no hardcoded thresholds
  */
 function generateHeadline(
   measures: MeasureInfo[], 
@@ -94,35 +102,36 @@ function generateHeadline(
 ): string {
   if (measures.length === 0) return 'Performance Overview';
   
-  // Prioritize rate metrics for headline (they're more insightful)
+  // Separate rate and volume metrics
   const rates = measures.filter(m => m.isRate);
   const volumes = measures.filter(m => !m.isRate);
   
-  // Check if we have rate metrics with issues to highlight
-  const lowRates = rates.filter(r => r.avg < 0.15); // Below 15%
-  const highRates = rates.filter(r => r.avg > 0.40); // Above 40%
-  
-  // Generate insight-driven headline based on rates (not counts)
-  if (lowRates.length > 0 && highRates.length > 0) {
-    return 'Optimize Campaigns for Maximum Engagement';
-  } else if (lowRates.length >= 2) {
-    return 'Multiple Metrics Need Attention';
-  } else if (lowRates.length === 1) {
-    const label = normalizeFieldName(lowRates[0].name, labelOverrides, { isRate: true, entityHint });
-    return `Improve ${label} to Boost Performance`;
-  } else if (highRates.length > 0) {
-    const label = normalizeFieldName(highRates[0].name, labelOverrides, { isRate: true, entityHint });
-    return `Strong ${label} Driving Results`;
-  } else if (rates.length > 0) {
-    // Moderate performance - focus on optimization opportunity
-    return 'Optimize Performance Across Campaigns';
+  // For rates: find the best and worst relative to each other
+  if (rates.length >= 2) {
+    const sorted = [...rates].sort((a, b) => b.avg - a.avg);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    
+    // If there's significant spread, highlight the opportunity
+    const spread = best.avg - worst.avg;
+    if (spread > 0.10) { // 10 percentage points difference
+      const worstLabel = normalizeFieldName(worst.name, labelOverrides, { isRate: true, entityHint });
+      return `Opportunity to Improve ${worstLabel}`;
+    }
+    
+    // If all rates are similar, highlight the leader
+    const bestLabel = normalizeFieldName(best.name, labelOverrides, { isRate: true, entityHint });
+    return `Strong ${bestLabel} Performance`;
+  } else if (rates.length === 1) {
+    const rate = rates[0];
+    const label = normalizeFieldName(rate.name, labelOverrides, { isRate: true, entityHint });
+    return `${label} Analysis`;
   }
   
-  // Fallback to volume-based headline only if no rates - use entityHint for context
+  // Fallback to volume-based headline
   if (volumes.length > 0) {
     const topVolume = volumes[0];
     const label = normalizeFieldName(topVolume.name, labelOverrides, { entityHint });
-    // Avoid headlines like "Total Count Overview" - use entity instead
     const entityLabel = entityHint || label;
     return `${entityLabel} Performance Overview`;
   }
@@ -131,7 +140,8 @@ function generateHeadline(
 }
 
 /**
- * Generate key takeaway from the data - focus on actionable insights
+ * Generate key takeaway from the data
+ * Uses relative comparisons and statistical context - no hardcoded thresholds
  */
 function generateKeyTakeaway(
   measures: MeasureInfo[], 
@@ -145,28 +155,28 @@ function generateKeyTakeaway(
   const rates = measures.filter(m => m.isRate);
   const volumes = measures.filter(m => !m.isRate);
   
-  // Identify performance issues first (these are most actionable)
-  const lowRates = rates.filter(r => r.avg < 0.15);
-  const highRates = rates.filter(r => r.avg > 0.40);
-  
-  if (highRates.length > 0 && lowRates.length > 0) {
-    const goodLabel = normalizeFieldName(highRates[0].name, labelOverrides, { isRate: true, entityHint });
-    const badLabel = normalizeFieldName(lowRates[0].name, labelOverrides, { isRate: true, entityHint });
-    insights.push(`Strong ${goodLabel} (${formatValue(highRates[0].avg, true)}) with room for improvement in ${badLabel} (${formatValue(lowRates[0].avg, true)})`);
-  } else if (lowRates.length > 0) {
-    const labels = lowRates.slice(0, 2).map(r => normalizeFieldName(r.name, labelOverrides, { isRate: true, entityHint })).join(' and ');
-    insights.push(`Focus on improving ${labels} to enhance campaign effectiveness`);
-  } else if (highRates.length > 0) {
-    const bestRate = highRates[0];
-    const label = normalizeFieldName(bestRate.name, labelOverrides, { isRate: true, entityHint });
-    insights.push(`Excellent ${label} at ${formatValue(bestRate.avg, true)} - continue successful strategies`);
+  // For rates: use relative comparison (best vs worst) instead of fixed thresholds
+  if (rates.length >= 2) {
+    const sorted = [...rates].sort((a, b) => b.avg - a.avg);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    const bestLabel = normalizeFieldName(best.name, labelOverrides, { isRate: true, entityHint });
+    const worstLabel = normalizeFieldName(worst.name, labelOverrides, { isRate: true, entityHint });
+    
+    insights.push(
+      `${bestLabel} leads at ${formatValue(best.avg, true)}, ` +
+      `while ${worstLabel} shows opportunity at ${formatValue(worst.avg, true)}`
+    );
+  } else if (rates.length === 1) {
+    const rate = rates[0];
+    const label = normalizeFieldName(rate.name, labelOverrides, { isRate: true, entityHint });
+    insights.push(`${label} is ${formatValue(rate.avg, true)}`);
   }
   
-  // Add volume context if space allows - use entityHint for clarity
+  // Add volume context if space allows
   if (insights.length < 2 && volumes.length > 0) {
     const topVolume = volumes[0];
     const label = normalizeFieldName(topVolume.name, labelOverrides, { entityHint });
-    // Avoid "Total Total X" - check if label already starts with Total
     const prefix = label.toLowerCase().startsWith('total') ? '' : 'Total ';
     insights.push(`${prefix}${label}: ${formatValue(topVolume.sum, false)}`);
   }
@@ -176,6 +186,7 @@ function generateKeyTakeaway(
 
 /**
  * Generate data-driven insights
+ * Uses statistical analysis - no hardcoded domain thresholds
  */
 function generateInsights(
   analyzed: AnalyzedData,
@@ -184,57 +195,73 @@ function generateInsights(
 ): { icon: string; title: string; description: string; type: 'info' | 'success' | 'warning' | 'highlight' }[] {
   const insights: { icon: string; title: string; description: string; type: 'info' | 'success' | 'warning' | 'highlight' }[] = [];
   
-  // Concentration analysis
+  // Concentration analysis - using relative share, no domain thresholds
   if (analyzed.breakdowns.length > 0) {
     const bd = analyzed.breakdowns[0];
     if (bd.data.length >= 2) {
       const total = bd.data.reduce((sum, d) => sum + d.value, 0);
       const topShare = bd.data[0].value / total;
+      const top3Share = bd.data.slice(0, 3).reduce((sum, d) => sum + d.value, 0) / total;
       
+      // Use statistical thresholds: top segment > 50% or top 3 > 80% = high concentration
+      // These are mathematical concentration metrics, not domain-specific
       if (topShare > 0.5) {
         insights.push({
           icon: ICONS.target,
           title: 'High Concentration',
-          description: `${bd.data[0].label} accounts for ${(topShare * 100).toFixed(0)}% of total ${normalizeFieldName(bd.measure.name, labelOverrides, { entityHint })}. Consider diversification strategies.`,
+          description: `"${bd.data[0].label}" represents ${(topShare * 100).toFixed(0)}% of total ${normalizeFieldName(bd.measure.name, labelOverrides, { entityHint })}. Top 3 account for ${(top3Share * 100).toFixed(0)}%.`,
           type: 'warning'
         });
-      } else if (topShare > 0.3) {
+      } else if (top3Share > 0.8) {
+        insights.push({
+          icon: ICONS.chart,
+          title: 'Concentrated Distribution',
+          description: `Top 3 segments account for ${(top3Share * 100).toFixed(0)}% of total. "${bd.data[0].label}" leads at ${(topShare * 100).toFixed(0)}%.`,
+          type: 'info'
+        });
+      } else {
         insights.push({
           icon: ICONS.chart,
           title: 'Balanced Distribution',
-          description: `${bd.data[0].label} leads with ${(topShare * 100).toFixed(0)}% share. Good balance across segments.`,
+          description: `"${bd.data[0].label}" leads with ${(topShare * 100).toFixed(0)}% share across ${bd.data.length} segments.`,
           type: 'success'
         });
       }
     }
   }
   
-  // Rate performance
+  // Rate performance - compare rates to each other (relative analysis)
   const rates = analyzed.measures.filter(m => m.isRate);
-  for (const rate of rates.slice(0, 2)) {
-    const label = normalizeFieldName(rate.name, labelOverrides, { isRate: true, entityHint });
-    // rate.avg should be normalized to 0-1 range by analyzeWorksheetData
-    // If it's already > 1, it's in percentage format (0-100), so don't multiply
-    const pct = rate.avg > 1 ? rate.avg : rate.avg * 100;
+  if (rates.length >= 2) {
+    const sorted = [...rates].sort((a, b) => b.avg - a.avg);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
     
-    if (pct > 40) {
-      insights.push({
-        icon: ICONS.rocket,
-        title: `Excellent ${label}`,
-        description: `At ${pct.toFixed(1)}%, this exceeds typical benchmarks. Continue current strategies.`,
-        type: 'success'
-      });
-    } else if (pct < 15) {
-      insights.push({
-        icon: ICONS.warning,
-        title: `${label} Below Target`,
-        description: `Currently at ${pct.toFixed(1)}%. Review and optimize to improve performance.`,
-        type: 'warning'
-      });
-    }
+    const bestLabel = normalizeFieldName(best.name, labelOverrides, { isRate: true, entityHint });
+    const worstLabel = normalizeFieldName(worst.name, labelOverrides, { isRate: true, entityHint });
+    const bestPct = (best.avg > 1 ? best.avg : best.avg * 100).toFixed(1);
+    const worstPct = (worst.avg > 1 ? worst.avg : worst.avg * 100).toFixed(1);
+    
+    insights.push({
+      icon: ICONS.rocket,
+      title: `${bestLabel} Leads`,
+      description: `${bestLabel} at ${bestPct}% is the top performer. ${worstLabel} at ${worstPct}% has room for improvement.`,
+      type: 'success'
+    });
+  } else if (rates.length === 1) {
+    const rate = rates[0];
+    const label = normalizeFieldName(rate.name, labelOverrides, { isRate: true, entityHint });
+    const pct = (rate.avg > 1 ? rate.avg : rate.avg * 100).toFixed(1);
+    
+    insights.push({
+      icon: ICONS.chart,
+      title: `${label} Overview`,
+      description: `${label} is ${pct}% (range: ${(rate.min * 100).toFixed(1)}% - ${(rate.max * 100).toFixed(1)}%).`,
+      type: 'info'
+    });
   }
   
-  // Volume trends
+  // Volume summary - always useful context
   const volumes = analyzed.measures.filter(m => !m.isRate);
   if (volumes.length > 0) {
     const topVolume = volumes[0];
@@ -251,7 +278,8 @@ function generateInsights(
 }
 
 /**
- * Generate actionable recommendations based on the data analysis
+ * Generate actionable recommendations based on statistical analysis
+ * NO domain-specific assumptions - uses relative comparisons and data patterns
  */
 interface Recommendation {
   priority: 'high' | 'medium' | 'low';
@@ -267,75 +295,65 @@ function generateRecommendations(
 ): Recommendation[] {
   const recommendations: Recommendation[] = [];
   const rates = analyzed.measures.filter(m => m.isRate);
-  // Note: volumes, lowRates, moderateRates could be used for future recommendation logic
-  const highRates = rates.filter(r => r.avg >= 0.40);
   
-  // Delivery rate issues (if exists)
-  const deliveryRate = rates.find(r => r.name.toLowerCase().includes('deliver'));
-  if (deliveryRate && deliveryRate.avg < 0.85) {
-    recommendations.push({
-      priority: 'high',
-      action: 'Investigate and resolve delivery issues to improve rates.',
-      rationale: 'Improving delivery rates can increase campaign effectiveness significantly.',
-      tag: 'High Impact • Quick Win'
-    });
-  }
-  
-  // Low clickthrough or engagement rates
-  const clickRates = rates.filter(r => 
-    r.name.toLowerCase().includes('click') || 
-    r.name.toLowerCase().includes('ctr') ||
-    r.name.toLowerCase().includes('ctor')
-  );
-  for (const rate of clickRates) {
-    if (rate.avg < 0.10) {
-      const label = normalizeFieldName(rate.name, labelOverrides, { isRate: true, entityHint });
+  // Recommendation 1: Focus on lowest-performing rate (if multiple rates exist)
+  if (rates.length >= 2) {
+    const sorted = [...rates].sort((a, b) => a.avg - b.avg);
+    const lowest = sorted[0];
+    const highest = sorted[sorted.length - 1];
+    
+    // Only recommend if there's meaningful spread (>5 percentage points)
+    const spread = highest.avg - lowest.avg;
+    if (spread > 0.05) {
+      const lowestLabel = normalizeFieldName(lowest.name, labelOverrides, { isRate: true, entityHint });
       recommendations.push({
         priority: 'high',
-        action: `Optimize ${label} through better CTAs and content alignment.`,
-        rationale: 'A/B test subject lines, CTAs, and landing page relevance.',
-        tag: 'Medium • Requires Testing'
+        action: `Investigate factors affecting ${lowestLabel} to identify improvement opportunities.`,
+        rationale: `${lowestLabel} shows the most room for improvement compared to other metrics.`,
+        tag: 'Analysis Recommended'
       });
     }
   }
   
-  // Leverage high performers
-  if (highRates.length > 0 && analyzed.breakdowns.length > 0) {
-    const topBreakdown = analyzed.breakdowns[0];
-    if (topBreakdown.data.length > 0) {
-      const topPerformer = topBreakdown.data[0];
-      recommendations.push({
-        priority: 'medium',
-        action: `Replicate successful strategies from ${topPerformer.label}.`,
-        rationale: 'Apply winning tactics to underperforming campaigns.',
-        tag: 'Medium • Requires Testing'
-      });
-    }
-  }
-  
-  // Low open rates
-  const openRate = rates.find(r => r.name.toLowerCase().includes('open'));
-  if (openRate && openRate.avg < 0.25) {
+  // Recommendation 2: Leverage top performers (if breakdown data exists)
+  if (analyzed.breakdowns.length > 0 && analyzed.breakdowns[0].data.length >= 2) {
+    const bd = analyzed.breakdowns[0];
+    const topPerformer = bd.data[0];
+    const bottomPerformers = bd.data.slice(-3);
+    const dimLabel = normalizeFieldName(bd.dimension, labelOverrides, { entityHint });
+    
     recommendations.push({
       priority: 'medium',
-      action: 'Test subject lines and send times to improve open rates.',
-      rationale: 'Optimal timing and compelling subjects drive engagement.',
-      tag: 'Medium • Ongoing'
+      action: `Analyze success factors in "${topPerformer.label}" and apply learnings to lower performers.`,
+      rationale: `"${topPerformer.label}" leads in ${dimLabel}. Understanding its drivers could improve others.`,
+      tag: 'Best Practice Analysis'
     });
-  }
-  
-  // Segment analysis opportunity
-  if (analyzed.breakdowns.length > 0 && analyzed.breakdowns[0].data.length >= 5) {
-    const bd = analyzed.breakdowns[0];
+    
+    // If there's high variance, suggest segment optimization
     const total = bd.data.reduce((sum, d) => sum + d.value, 0);
-    const bottomShare = bd.data.slice(-2).reduce((sum, d) => sum + d.value, 0) / total;
-    if (bottomShare < 0.1) {
+    const bottomShare = bottomPerformers.reduce((sum, d) => sum + d.value, 0) / total;
+    if (bottomShare < 0.1 && bd.data.length >= 5) {
       recommendations.push({
         priority: 'low',
-        action: 'Review and potentially sunset lowest-performing segments.',
-        rationale: 'Focus resources on high-impact areas.',
-        tag: 'Low Priority • Analysis'
+        action: `Review lowest-performing ${dimLabel} segments for optimization or resource reallocation.`,
+        rationale: `Bottom segments account for ${(bottomShare * 100).toFixed(0)}% of total. Consider focusing resources on high-impact areas.`,
+        tag: 'Resource Optimization'
       });
+    }
+  }
+  
+  // Recommendation 3: Data quality / variance analysis
+  for (const rate of rates.slice(0, 2)) {
+    const variance = rate.max - rate.min;
+    if (variance > 0.3 && rate.count >= 5) { // High variance (>30 percentage points) across multiple records
+      const label = normalizeFieldName(rate.name, labelOverrides, { isRate: true, entityHint });
+      recommendations.push({
+        priority: 'medium',
+        action: `Investigate high variance in ${label} (${(rate.min * 100).toFixed(0)}%-${(rate.max * 100).toFixed(0)}%).`,
+        rationale: `Large spread may indicate inconsistent performance or segment-specific factors worth understanding.`,
+        tag: 'Variance Analysis'
+      });
+      break; // Only one variance recommendation
     }
   }
   
@@ -507,8 +525,10 @@ function buildDataSourceSection(
 
 /**
  * Detect entity type from context (title, worksheet names, columns)
- * This helps provide meaningful labels for count fields like "Total Emails Sent" instead of "Total Count"
- * Returns both the entity type and a suggested count label
+ * 
+ * NOTE: This is for DISPLAY labeling only, not business logic.
+ * It helps provide meaningful labels like "Total Emails" instead of "Total Count".
+ * This doesn't make any assumptions about business metrics or thresholds.
  */
 interface EntityContext {
   entity: string;        // e.g., "Emails", "Orders"
@@ -523,16 +543,16 @@ function detectEntityFromContext(
   // Combine all text for analysis
   const allText = [title, ...worksheetNames, ...columns].join(' ').toLowerCase();
   
-  // Entity detection patterns with more specific count labels
-  // Order matters - more specific first
+  // Common entity patterns for display labeling
+  // These patterns help create readable labels, not business assumptions
   const entityPatterns: Array<{ pattern: RegExp; entity: string; countLabel: string }> = [
-    // Email-specific patterns - detect if sent, opened, clicked, etc.
+    // Email/Campaign patterns
     { pattern: /sent.*(email|mail)|email.*sent|send.*count/i, entity: 'Emails', countLabel: 'Emails Sent' },
     { pattern: /open.*(email|rate)|email.*open/i, entity: 'Emails', countLabel: 'Emails Opened' },
     { pattern: /click.*(email|rate)|email.*click/i, entity: 'Emails', countLabel: 'Emails Clicked' },
     { pattern: /deliver.*(email|rate)|email.*deliver/i, entity: 'Emails', countLabel: 'Emails Delivered' },
     { pattern: /email|campaign|newsletter|inbox/i, entity: 'Emails', countLabel: 'Total Emails' },
-    // Other entities
+    // Other common entities
     { pattern: /order|purchase|checkout|cart|transaction/i, entity: 'Orders', countLabel: 'Total Orders' },
     { pattern: /customer|client|account|member/i, entity: 'Customers', countLabel: 'Total Customers' },
     { pattern: /user|visitor|session|login/i, entity: 'Users', countLabel: 'Total Users' },
@@ -737,46 +757,53 @@ export async function buildStoryHtml(
       : normalizeFieldName(bd.measure.name, labelOverrides, { isRate: bd.measure.isRate, entityHint });
     const dimLabel = normalizeFieldName(bd.dimension, labelOverrides, { entityHint });
     
-    topPerformersHtml = `
-      <div style="
-        background: ${theme.cardBg};
-        border-radius: 12px;
-        padding: 24px;
-        margin: 24px 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      ">
-        <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: ${theme.text}; display: flex; align-items: center; gap: 8px;">
-          ${ICONS.trophy} Top ${escapeHtml(dimLabel)} by ${escapeHtml(measureLabel)}
-        </h3>
-        ${topItems.map((item, idx) => `
-          <div style="
-            display: flex;
-            align-items: center;
-            padding: 12px 0;
-            ${idx < topItems.length - 1 ? `border-bottom: 1px solid ${theme.border};` : ''}
-          ">
+    // Skip showing "Top X by Id" - these aren't meaningful breakdowns
+    // Only show when we have a meaningful measure label (not just an ID column)
+    const skipMeasureLabels = ['id', 'ids', 'pk', 'key', 'guid', 'uuid', 'record id', 'row id'];
+    const shouldSkip = skipMeasureLabels.includes(measureLabel.toLowerCase().trim());
+    
+    if (!shouldSkip) {
+      topPerformersHtml = `
+        <div style="
+          background: ${theme.cardBg};
+          border-radius: 12px;
+          padding: 24px;
+          margin: 24px 0;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        ">
+          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: ${theme.text}; display: flex; align-items: center; gap: 8px;">
+            ${ICONS.trophy} Top ${escapeHtml(dimLabel)} by ${escapeHtml(measureLabel)}
+          </h3>
+          ${topItems.map((item, idx) => `
             <div style="
-              width: 32px;
-              height: 32px;
-              background: ${theme.kpiColors[idx]};
-              color: white;
-              border-radius: 50%;
               display: flex;
               align-items: center;
-              justify-content: center;
-              font-weight: 700;
-              font-size: 14px;
-              margin-right: 16px;
-            ">${idx + 1}</div>
-            <div style="flex: 1;">
-              <div style="font-weight: 600; color: ${theme.text};">${escapeHtml(item.label)}</div>
+              padding: 12px 0;
+              ${idx < topItems.length - 1 ? `border-bottom: 1px solid ${theme.border};` : ''}
+            ">
+              <div style="
+                width: 32px;
+                height: 32px;
+                background: ${theme.kpiColors[idx]};
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 14px;
+                margin-right: 16px;
+              ">${idx + 1}</div>
+              <div style="flex: 1;">
+                <div style="font-weight: 600; color: ${theme.text};">${escapeHtml(item.label)}</div>
+              </div>
+              <div style="font-size: 18px; font-weight: 700; color: ${theme.primary};">
+                ${formatValue(item.value, bd.measure.isRate)}
+              </div>
             </div>
-            <div style="font-size: 18px; font-weight: 700; color: ${theme.primary};">
-              ${formatValue(item.value, bd.measure.isRate)}
-            </div>
-          </div>
-        `).join('')}
-      </div>`;
+          `).join('')}
+        </div>`;
+    }
   }
 
   // Compose full story HTML

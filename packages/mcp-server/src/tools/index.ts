@@ -58,6 +58,10 @@ import {
   interpretConcentration,
   interpretSegmentComparison,
 } from '../analysis/query-recipes.js';
+import {
+  analyzeDataQuality,
+  DataQualityReport,
+} from '../analysis/data-quality.js';
 
 // Optional TWB helper module (refactor placeholder)
 // import { parseWorkbookXml, getWorkbookSummary } from '../twb/index.js';
@@ -88,20 +92,33 @@ interface VisionModelConfig {
   apiKey: string;
 }
 
+interface GenerationModelConfig {
+  provider: 'openai' | 'anthropic';
+  model: string;
+  apiKey: string;
+}
+
 interface CachedApiKeys {
   openaiApiKey?: string;
   anthropicApiKey?: string;
   visionModelConfig?: VisionModelConfig;  // User-selected vision model
+  generationModelConfig?: GenerationModelConfig;  // User-selected generation model
   timestamp: number;
 }
 let cachedApiKeys: CachedApiKeys | null = null;
 const API_KEY_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-export function setCachedApiKeys(openaiKey?: string, anthropicKey?: string, visionConfig?: VisionModelConfig): void {
+export function setCachedApiKeys(
+  openaiKey?: string, 
+  anthropicKey?: string, 
+  visionConfig?: VisionModelConfig,
+  generationConfig?: GenerationModelConfig
+): void {
   cachedApiKeys = {
     openaiApiKey: openaiKey,
     anthropicApiKey: anthropicKey,
     visionModelConfig: visionConfig,
+    generationModelConfig: generationConfig,
     timestamp: Date.now(),
   };
 }
@@ -121,6 +138,14 @@ function getCachedVisionModel(): VisionModelConfig | null {
     return null;
   }
   return cachedApiKeys.visionModelConfig;
+}
+
+function getCachedGenerationModel(): GenerationModelConfig | null {
+  if (!cachedApiKeys?.generationModelConfig) return null;
+  if (Date.now() - cachedApiKeys.timestamp > API_KEY_CACHE_TTL) {
+    return null;
+  }
+  return cachedApiKeys.generationModelConfig;
 }
 
 // ==================== TOOL DEFINITIONS ====================
@@ -405,6 +430,13 @@ SOURCES:
     name: 'analyze-dashboard-smart',
     description: `PRIMARY TOOL for data analysis. Analyzes connected Tableau dashboard data.
 
+**OUTPUT: Returns data for YOU (the LLM) to analyze and present as TEXT in chat.**
+DO NOT call build-dashboard after this tool. Present findings as a Markdown report.
+
+For "data analytics review" or "detailed analysis" requests, include this at the end:
+---
+*Click the "Download Analysis PDF" button below to save this report.*
+
 **TRIGGER PHRASES (use this tool when user says):**
 - "analyze this dashboard"
 - "what are the key metrics"
@@ -418,6 +450,7 @@ SOURCES:
 - "concentration analysis"
 - "trend analysis"
 - "what's the data telling me"
+- "data analytics review" → Return TEXT report, NOT a dashboard
 
 **Returns data from ALL worksheets** when no specific worksheet is specified.
 This enables analysis across Summary, Detail, Timeline, and other views.
@@ -481,7 +514,11 @@ Includes:
 - Seasonality detection
 - Key driver analysis
 
-Returns a detailed Markdown report suitable for data scientists.`,
+Returns a detailed Markdown report suitable for data scientists.
+
+**IMPORTANT:** End your response with:
+---
+*Click the "Download Analysis PDF" button below to save this report.*`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -869,13 +906,12 @@ Transform dashboard metrics into a storytelling narrative layout with headlines,
 - "key takeaways"
 - "make this readable"
 
-Multi-stage pipeline:
-1. Data extraction (cached)
-2. Analysis (cached)
-3. Design generation
-4. HTML rendering
-
-Generates: Hero headline, key takeaway box, narrative flow, insight callouts, recommended actions.
+**CRITICAL - ALWAYS PROVIDE A HEADLINE:**
+You MUST generate a compelling, data-driven headline (5-8 words) based on the dashboard context and user request. 
+- Make it specific and insightful, not generic
+- Reference actual metrics or trends when possible
+- Vary the headline based on storyAngle and audience
+- Examples: "Email Open Rates Surge 23% in Q4", "Campaign Performance Hits Record Highs", "Engagement Dips Signal Action Needed"
 
 **AFTER CALLING:** Tell the user "Check the Preview tab to see your narrative summary."`,
     inputSchema: {
@@ -888,6 +924,28 @@ Generates: Hero headline, key takeaway box, narrative flow, insight callouts, re
         audience: {
           type: 'string',
           description: 'Target: executive, analyst, general, technical',
+        },
+        theme: {
+          type: 'string',
+          description: 'Visual theme: story, professional, modern, minimal, colorful, blue, green, purple, corporate',
+          default: 'story',
+        },
+        title: {
+          type: 'string',
+          description: 'Custom title for the story (optional)',
+        },
+        headline: {
+          type: 'string',
+          description: 'REQUIRED: A compelling 5-8 word headline that captures the key insight. Be specific, reference metrics or trends. Examples: "Q4 Campaign Performance Exceeds Goals", "Open Rates Signal Engagement Growth"',
+        },
+        keyTakeaway: {
+          type: 'string',
+          description: 'RECOMMENDED: A 1-2 sentence key takeaway summarizing the most important insight for the audience',
+        },
+        customColors: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Custom hex colors for the story theme (optional)',
         },
         includeRecommendations: {
           type: 'boolean',
@@ -1910,10 +1968,46 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
         return { success: false, error: extractResponse.error };
       }
 
+      // ==================== QUICK DATA QUALITY CHECK ====================
+      // For quick analysis, do a lightweight quality scan on the measures
+      const qualityFlags: Array<{ field: string; issue: string; severity: string }> = [];
+      
+      if (extractResponse.measures && Array.isArray(extractResponse.measures)) {
+        for (const measure of extractResponse.measures) {
+          const nameLower = (measure.name || '').toLowerCase();
+          const isRate = measure.isRate || nameLower.includes('rate') || nameLower.includes('%');
+          
+          if (isRate) {
+            const value = measure.avg ?? measure.sum ?? 0;
+            if (value === 0) {
+              qualityFlags.push({
+                field: measure.name,
+                issue: 'Rate shows 0% - verify calculation or check if numerator data exists',
+                severity: 'warning',
+              });
+            } else if (value > 1 && value > 100) {
+              qualityFlags.push({
+                field: measure.name,
+                issue: `Rate value ${value} exceeds 100% - check calculation formula`,
+                severity: 'critical',
+              });
+            }
+          }
+        }
+      }
+
       return {
         success: true,
         analysisGoal,
         ...extractResponse,
+        qualityFlags: qualityFlags.length > 0 ? qualityFlags : undefined,
+        analysisInstructions: qualityFlags.length > 0 ? `
+## ⚠️ Data Quality Alerts
+
+${qualityFlags.map(f => `- ${f.severity === 'critical' ? '🔴' : '🟡'} **${f.field}**: ${f.issue}`).join('\n')}
+
+Please mention these issues in your analysis and recommend investigation if needed.
+` : undefined,
       };
     }
 
@@ -1933,9 +2027,74 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
         return { success: false, error: response.error };
       }
 
+      // ==================== DATA QUALITY ANALYSIS ====================
+      // Perform comprehensive data quality checks on the extracted data
+      let dataQualityReport: DataQualityReport | null = null;
+      
+      try {
+        // Combine all worksheet data into a single dataset for quality analysis
+        const allData: Record<string, any>[] = [];
+        if (response.worksheets && Array.isArray(response.worksheets)) {
+          for (const ws of response.worksheets) {
+            if (ws.rows && Array.isArray(ws.rows)) {
+              for (const row of ws.rows) {
+                // Convert row array to object using column names
+                if (ws.columns && Array.isArray(ws.columns)) {
+                  const rowObj: Record<string, any> = {};
+                  ws.columns.forEach((col: any, idx: number) => {
+                    const colName = col.fieldName || col.name || `col_${idx}`;
+                    rowObj[colName] = row[idx]?.value ?? row[idx];
+                  });
+                  allData.push(rowObj);
+                }
+              }
+            }
+          }
+        }
+
+        if (allData.length > 0) {
+          dataQualityReport = analyzeDataQuality(allData);
+          console.error('[full-data-exploration] Data quality score:', dataQualityReport.overallScore);
+        }
+      } catch (e) {
+        console.error('[full-data-exploration] Error in data quality analysis:', e);
+      }
+
       return {
         success: true,
         ...response,
+        dataQuality: dataQualityReport ? {
+          score: dataQualityReport.overallScore,
+          scoreLabel: dataQualityReport.scoreLabel,
+          issueCount: dataQualityReport.issues.length,
+          criticalCount: dataQualityReport.issues.filter((i: any) => i.severity === 'critical').length,
+          warningCount: dataQualityReport.issues.filter((i: any) => i.severity === 'warning').length,
+          formattedReport: dataQualityReport.formattedReport,
+          issues: dataQualityReport.issues,
+        } : null,
+        analysisInstructions: `
+## 📋 Analysis Report Instructions
+
+When presenting your analysis, use these formatting guidelines:
+
+### Color-Coded Indicators:
+- 🔴 **CRITICAL** - Issues that may significantly impact analysis reliability
+- 🟡 **WARNING** - Items that should be reviewed for accuracy  
+- 🔵 **INFO** - Observations for context (not necessarily problems)
+- ✅ **OK** - Metrics and fields that passed quality checks
+
+### Report Structure:
+1. **Data Quality Assessment** (include the formattedReport from dataQuality if available)
+2. **Key Metrics Summary** - Present the main KPIs with quality indicators
+3. **Findings & Insights** - Your analysis observations
+4. **Recommendations** - Actionable next steps
+5. **Data Limitations** - Any caveats or areas needing investigation
+
+### Important:
+- If a rate shows 0%, flag it with 🟡 and recommend verification
+- If data has high null rates, mention it prominently
+- End with: *Click the "Download Analysis PDF" button below to save this report.*
+`,
       };
     }
 
@@ -2006,6 +2165,7 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
 
       console.error('[build-dashboard] Processed labelOverrides:', Object.keys(labelOverrides).length, 'keys:', Object.keys(labelOverrides).slice(0, 3));
 
+      console.error('[build-dashboard] Sending to extension...');
       const response = await bridge.sendToExtension({
         type: 'build-dashboard',
         title,
@@ -2019,6 +2179,7 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
         maxItems,
         customColors,
       });
+      console.error('[build-dashboard] Extension response:', JSON.stringify(response)?.substring(0, 200));
 
       if (response?.error) {
         return { success: false, error: response.error };
@@ -2125,6 +2286,11 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
     case 'transform-to-story': {
       const storyAngle = args.storyAngle as string;
       const audience = args.audience as string;
+      const theme = args.theme as string;
+      const title = args.title as string;
+      const headline = args.headline as string;
+      const keyTakeaway = args.keyTakeaway as string;
+      const customColors = args.customColors as string[];
       const includeRecommendations = args.includeRecommendations !== false;
       const forceRefresh = args.forceRefresh as boolean || false;
       const designRequest = args.designRequest as string;
@@ -2133,6 +2299,11 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
         type: 'transform-to-story',
         storyAngle,
         audience,
+        theme,
+        title,
+        headline,
+        keyTakeaway,
+        customColors,
         includeRecommendations,
         forceRefresh,
         designRequest,
@@ -2196,6 +2367,55 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
       const colors = args.colors as string[];
       const checkAccessibility = args.checkAccessibility !== false;
 
+      // If no colors provided, get image and analyze with vision
+      if (!colors || colors.length === 0) {
+        // Get screenshot from extension
+        const imageResponse = await bridge.sendToExtension({ type: 'get-image' });
+        
+        if (!imageResponse?.image) {
+          return {
+            success: false,
+            error: 'No colors provided and no screenshot available. Please drop a dashboard screenshot in the Design tab, or provide hex colors.',
+          };
+        }
+
+        // Use vision LLM to analyze colors from screenshot
+        const visionPrompt = `Analyze this dashboard screenshot for color usage. Provide a detailed analysis including:
+
+1. **Color Palette Identification**: List ALL distinct colors used (provide hex codes)
+2. **Color Harmony Analysis**: Is the palette harmonious? (complementary, analogous, triadic, etc.)
+3. **Accessibility Check**: 
+   - WCAG contrast ratios for text on backgrounds
+   - Color-blind safety (red-green issues?)
+   - Any colors that are too similar
+4. **Semantic Consistency**: Are colors used consistently? (same metric = same color?)
+5. **Emotional Impact**: What mood does this palette convey?
+6. **Specific Issues**: List any color problems you see
+7. **Recommendations**: Specific hex colors to use as improvements
+
+Format your response with clear headers and bullet points.`;
+
+        // Get the extension to call vision LLM
+        const response = await bridge.sendToExtension({
+          type: 'analyze-color-harmony',
+          screenshotBase64: imageResponse.image,
+          checkAccessibility,
+          useVision: true,
+          visionPrompt,
+        });
+
+        if (response?.error) {
+          return { success: false, error: response.error };
+        }
+
+        return {
+          success: true,
+          analysisSource: 'vision',
+          ...response,
+        };
+      }
+
+      // Colors provided - do programmatic analysis
       const response = await bridge.sendToExtension({
         type: 'analyze-color-harmony',
         colors,
@@ -2208,6 +2428,7 @@ Then consider layout, color choices, data-ink ratio, clarity, storytelling, and 
 
       return {
         success: true,
+        analysisSource: 'colors',
         ...response,
       };
     }

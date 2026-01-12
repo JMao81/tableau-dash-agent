@@ -6,7 +6,8 @@
 
 [![Tableau Hackathon 2025](https://img.shields.io/badge/Tableau%20Hackathon-2025-blue)](https://tableau2025.devpost.com/)
 [![MCP Protocol](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-green)](https://modelcontextprotocol.io/)
-[![Private Repository](https://img.shields.io/badge/Repo-Private-red)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub](https://img.shields.io/badge/GitHub-Open%20Source-brightgreen)](https://github.com/JMao81/tableau-dash-agent)
 
 Project story and design intent: see [STORY.md](STORY.md).
 
@@ -849,9 +850,9 @@ Built for **Tableau Hackathon 2025** - Developer Platform track.
 
 ## License
 
-**Private Repository** - Built for Tableau Hackathon 2025
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
-This project is currently private to protect intellectual property during the hackathon evaluation period.
+MIT License allows you to freely use, modify, and distribute this software with attribution.
 
 ---
 
